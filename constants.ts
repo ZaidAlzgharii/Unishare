@@ -1,0 +1,129 @@
+import { Program, TranslationDictionary, Note } from './types';
+
+export const PROGRAMS: Program[] = [
+  // NATURAL SCIENCES AND COMPUTING DIVISION
+  { 
+    name: 'Molecular Genetics Biology', 
+    courses: ['Cell Biology', 'Organic Chemistry', 'Genomics', 'Lab Techniques', 'Bioinformatics', 'General Biology'] 
+  },
+  { 
+    name: 'Computer Science', 
+    courses: ['Intro to Algo', 'Data Structures', 'Web Development', 'AI Basics', 'Computer Architecture', 'Database Systems'] 
+  },
+  
+  // SOCIAL SCIENCES DIVISION
+  { 
+    name: 'Social Thought, Economy, and Policy (STEP)', 
+    courses: ['Social Theory', 'Microeconomics', 'Political Philosophy', 'Public Policy Analysis', 'Sociology'] 
+  },
+  { 
+    name: 'Global Studies and Diplomacy', 
+    courses: ['World History', 'International Relations', 'Diplomacy 101', 'Global Economics', 'Conflict Resolution'] 
+  },
+  { 
+    name: 'Human Rights and International Law', 
+    courses: ['Intro to Human Rights', 'Public International Law', 'Refugee Law', 'Legal Writing', 'International Courts'] 
+  },
+
+  // HUMANITIES AND PRACTICING ARTS DIVISION
+  { 
+    name: 'Literature and Society', 
+    courses: ['Comparative Literature', 'Modernist Fiction', 'Poetry Analysis', 'Creative Writing', 'World Literature'] 
+  },
+  { 
+    name: 'Digital Media and Communication', 
+    courses: ['Digital Media Theory', 'Video Production', 'Social Media Strategy', 'Journalism Ethics', 'Visual Communication'] 
+  },
+  { 
+    name: 'Urban Studies', 
+    courses: ['Introduction to Urban Planning', 'Urban Sociology', 'Sustainable Cities', 'Housing Policy', 'Architecture Basics'] 
+  }
+];
+
+export const NOTE_CATEGORIES = ['Summary', 'Lecture Notes', 'Past Exam', 'Assignment', 'Cheatsheet'];
+
+export const TRANSLATIONS: TranslationDictionary = {
+  nav_brand: { en: 'UniShare', ar: 'يوني شير' },
+  nav_home: { en: 'Home', ar: 'الرئيسية' },
+  nav_admin: { en: 'Admin Panel', ar: 'لوحة المسؤول' },
+  nav_profile: { en: 'My Profile', ar: 'ملفي الشخصي' },
+  nav_login_as: { en: 'Logged in as', ar: 'تم تسجيل الدخول بصفة' },
+  nav_login: { en: 'Login', ar: 'دخول' },
+  nav_logout: { en: 'Logout', ar: 'خروج' },
+  hero_title: { en: 'Find & Share University Notes', ar: 'اعثر على وشارك الملاحظات الجامعية' },
+  hero_subtitle: { en: 'Access thousands of verified study materials from top students. Level up your grades today.', ar: 'الوصول إلى الآلاف من المواد الدراسية المعتمدة من أفضل الطلاب. ارفع درجاتك اليوم.' },
+  search_placeholder: { en: 'Search courses, topics, or keywords...', ar: 'ابحث عن الدورات، المواضيع، أو الكلمات المفتاحية...' },
+  filter_program: { en: 'Filter by Program', ar: 'تصفية حسب البرنامج' },
+  sort_date_newest: { en: 'Date (Newest)', ar: 'التاريخ (الأحدث)' },
+  sort_date_oldest: { en: 'Date (Oldest)', ar: 'التاريخ (الأقدم)' },
+  sort_upvotes: { en: 'Most Upvoted', ar: 'الأكثر إعجاباً' },
+  sort_popular: { en: 'Most Popular', ar: 'الأكثر شعبية' },
+  sort_title: { en: 'Title (A-Z)', ar: 'العنوان (أ-ي)' },
+  sort_uploader: { en: 'Uploader (A-Z)', ar: 'الرافع (أ-ي)' },
+  tab_all: { en: 'All Notes', ar: 'كل الملاحظات' },
+  tab_saved: { en: 'My Library', ar: 'مكتبتي' },
+  btn_upload: { en: 'Upload Note', ar: 'رفع ملاحظة' },
+  btn_preview: { en: 'Preview', ar: 'معاينة' },
+  btn_download: { en: 'Download', ar: 'تحميل' },
+  btn_approve: { en: 'Approve', ar: 'قبول' },
+  btn_reject: { en: 'Reject', ar: 'رفض' },
+  btn_delete: { en: 'Delete', ar: 'حذف' },
+  btn_ai_summary: { en: 'AI Summary', ar: 'ملخص الذكاء الاصطناعي' },
+  btn_reset_filters: { en: 'Reset Filters', ar: 'إعادة تعيين التصفيات' },
+  status_pending: { en: 'Pending', ar: 'قيد الانتظار' },
+  status_approved: { en: 'Approved', ar: 'مقبول' },
+  upload_title: { en: 'Upload New Note', ar: 'رفع ملاحظة جديدة' },
+  form_title: { en: 'Title', ar: 'العنوان' },
+  form_desc: { en: 'Description', ar: 'الوصف' },
+  form_program: { en: 'Program', ar: 'البرنامج' },
+  form_course: { en: 'Course', ar: 'المساق' },
+  form_category: { en: 'Category', ar: 'الفئة' },
+  form_file: { en: 'Select File', ar: 'اختر الملف' },
+  modal_close: { en: 'Close', ar: 'إغلاق' },
+  toast_upload_success: { en: 'Note uploaded successfully!', ar: 'تم رفع الملاحظة بنجاح!' },
+  toast_approve_success: { en: 'Note approved.', ar: 'تم قبول الملاحظة.' },
+  toast_delete_success: { en: 'Note deleted.', ar: 'تم حذف الملاحظة.' },
+  toast_saved: { en: 'Added to library', ar: 'تمت الإضافة إلى المكتبة' },
+  toast_removed: { en: 'Removed from library', ar: 'تمت الإزالة من المكتبة' },
+  toast_session_saved: { en: 'Session settings saved!', ar: 'تم حفظ إعدادات الجلسة!' },
+  toast_welcome: { en: 'Welcome back', ar: 'مرحباً بعودتك' },
+  toast_logged_out: { en: 'Logged out successfully', ar: 'تم تسجيل الخروج بنجاح' },
+  tooltip_save_session: { en: 'Save current filters', ar: 'حفظ التصفيات الحالية' },
+  loading: { en: 'Loading...', ar: 'جار التحميل...' },
+  no_notes: { en: 'No notes found.', ar: 'لا توجد ملاحظات.' },
+  no_notes_desc: { en: 'Try adjusting your search or filters to find what you are looking for.', ar: 'حاول تعديل البحث أو التصفيات للعثور على ما تبحث عنه.' },
+  admin_dashboard: { en: 'Admin Dashboard', ar: 'لوحة التحكم' },
+  table_date: { en: 'Date', ar: 'التاريخ' },
+  table_uploader: { en: 'Uploader', ar: 'الرافع' },
+  table_status: { en: 'Status', ar: 'الحالة' },
+  table_actions: { en: 'Actions', ar: 'إجراءات' },
+  ai_summary_title: { en: 'AI Generated Key Takeaways', ar: 'أهم النقاط المستخرجة بالذكاء الاصطناعي' },
+  admin_stats_total: { en: 'Total Notes', ar: 'إجمالي الملاحظات' },
+  admin_stats_pending: { en: 'Pending Review', ar: 'قيد المراجعة' },
+  admin_stats_approved: { en: 'Published', ar: 'منشور' },
+  admin_stats_upvotes: { en: 'Total Upvotes', ar: 'إجمالي الإعجابات' },
+  login_title: { en: 'Welcome Back', ar: 'مرحباً بعودتك' },
+  login_subtitle: { en: 'Enter your credentials to access your account.', ar: 'أدخل بيانات الاعتماد للوصول إلى حسابك.' },
+  email_label: { en: 'Email Address', ar: 'البريد الإلكتروني' },
+  password_label: { en: 'Password', ar: 'كلمة المرور' },
+  btn_login: { en: 'Sign In', ar: 'تسجيل الدخول' },
+  btn_register: { en: 'Create Account', ar: 'إنشاء حساب' },
+  toggle_register: { en: "Don't have an account? Sign up", ar: 'ليس لديك حساب؟ سجل الآن' },
+  toggle_login: { en: 'Already have an account? Sign in', ar: 'لديك حساب بالفعل؟ سجل الدخول' },
+  demo_credentials: { en: 'Demo Credentials', ar: 'بيانات تجريبية' },
+  login_required: { en: 'Please login to continue', ar: 'الرجاء تسجيل الدخول للمتابعة' },
+  name_label: { en: 'Full Name', ar: 'الاسم الكامل' },
+  role_label: { en: 'I am a...', ar: 'أنا...' },
+  login_error: { en: 'Invalid email or password', ar: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' },
+  comments_title: { en: 'Discussion', ar: 'المناقشة' },
+  comments_placeholder: { en: 'Ask a question or say thanks...', ar: 'اسأل سؤالاً أو قل شكراً...' },
+  comments_submit: { en: 'Post', ar: 'نشر' },
+  comments_empty: { en: 'No comments yet. Be the first!', ar: 'لا توجد تعليقات بعد. كن الأول!' },
+  profile_title: { en: 'My Profile', ar: 'ملفي الشخصي' },
+  profile_uploads: { en: 'My Uploads', ar: 'مرفوعاتي' },
+  profile_stats_upvotes: { en: 'Upvotes Received', ar: 'الإعجابات المستلمة' },
+  profile_stats_notes: { en: 'Notes Shared', ar: 'الملاحظات المشاركة' },
+  profile_member_since: { en: 'Member since', ar: 'عضو منذ' },
+};
+
+export const MOCK_NOTES: Note[] = [];

@@ -1,0 +1,5 @@
+{
+  "name": "UniShare",
+  "description": "A bilingual university note-sharing platform with role-based access control, mocking a backend environment.",
+  "requestFramePermissions": []
+}
