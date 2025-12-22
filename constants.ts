@@ -2,42 +2,18 @@ import { Program, TranslationDictionary, Note } from './types';
 
 export const PROGRAMS: Program[] = [
   // NATURAL SCIENCES AND COMPUTING DIVISION
-  { 
-    name: 'Molecular Genetics Biology', 
-    courses: ['Cell Biology', 'Organic Chemistry', 'Genomics', 'Lab Techniques', 'Bioinformatics', 'General Biology'] 
-  },
-  { 
-    name: 'Computer Science', 
-    courses: ['Intro to Algo', 'Data Structures', 'Web Development', 'AI Basics', 'Computer Architecture', 'Database Systems'] 
-  },
+  { name: 'Molecular Genetics Biology' },
+  { name: 'Computer Science' },
   
   // SOCIAL SCIENCES DIVISION
-  { 
-    name: 'Social Thought, Economy, and Policy (STEP)', 
-    courses: ['Social Theory', 'Microeconomics', 'Political Philosophy', 'Public Policy Analysis', 'Sociology'] 
-  },
-  { 
-    name: 'Global Studies and Diplomacy', 
-    courses: ['World History', 'International Relations', 'Diplomacy 101', 'Global Economics', 'Conflict Resolution'] 
-  },
-  { 
-    name: 'Human Rights and International Law', 
-    courses: ['Intro to Human Rights', 'Public International Law', 'Refugee Law', 'Legal Writing', 'International Courts'] 
-  },
+  { name: 'Social Thought, Economy, and Policy (STEP)' },
+  { name: 'Global Studies and Diplomacy' },
+  { name: 'Human Rights and International Law' },
 
   // HUMANITIES AND PRACTICING ARTS DIVISION
-  { 
-    name: 'Literature and Society', 
-    courses: ['Comparative Literature', 'Modernist Fiction', 'Poetry Analysis', 'Creative Writing', 'World Literature'] 
-  },
-  { 
-    name: 'Digital Media and Communication', 
-    courses: ['Digital Media Theory', 'Video Production', 'Social Media Strategy', 'Journalism Ethics', 'Visual Communication'] 
-  },
-  { 
-    name: 'Urban Studies', 
-    courses: ['Introduction to Urban Planning', 'Urban Sociology', 'Sustainable Cities', 'Housing Policy', 'Architecture Basics'] 
-  }
+  { name: 'Literature and Society' },
+  { name: 'Digital Media and Communication' },
+  { name: 'Urban Studies' }
 ];
 
 export const NOTE_CATEGORIES = ['Summary', 'Lecture Notes', 'Past Exam', 'Assignment', 'Cheatsheet'];
@@ -52,8 +28,8 @@ export const TRANSLATIONS: TranslationDictionary = {
   nav_logout: { en: 'Logout', ar: 'خروج' },
   hero_title: { en: 'Find & Share University Notes', ar: 'اعثر على وشارك الملاحظات الجامعية' },
   hero_subtitle: { en: 'Access thousands of verified study materials from top students. Level up your grades today.', ar: 'الوصول إلى الآلاف من المواد الدراسية المعتمدة من أفضل الطلاب. ارفع درجاتك اليوم.' },
-  search_placeholder: { en: 'Search courses, topics, or keywords...', ar: 'ابحث عن الدورات، المواضيع، أو الكلمات المفتاحية...' },
-  filter_program: { en: 'Filter by Program', ar: 'تصفية حسب البرنامج' },
+  search_placeholder: { en: 'Search majors, topics, or keywords...', ar: 'ابحث عن التخصصات، المواضيع، أو الكلمات المفتاحية...' },
+  filter_program: { en: 'Filter by Major', ar: 'تصفية حسب التخصص' },
   sort_date_newest: { en: 'Date (Newest)', ar: 'التاريخ (الأحدث)' },
   sort_date_oldest: { en: 'Date (Oldest)', ar: 'التاريخ (الأقدم)' },
   sort_upvotes: { en: 'Most Upvoted', ar: 'الأكثر إعجاباً' },
@@ -75,8 +51,7 @@ export const TRANSLATIONS: TranslationDictionary = {
   upload_title: { en: 'Upload New Note', ar: 'رفع ملاحظة جديدة' },
   form_title: { en: 'Title', ar: 'العنوان' },
   form_desc: { en: 'Description', ar: 'الوصف' },
-  form_program: { en: 'Program', ar: 'البرنامج' },
-  form_course: { en: 'Course', ar: 'المساق' },
+  form_program: { en: 'Major', ar: 'التخصص' },
   form_category: { en: 'Category', ar: 'الفئة' },
   form_file: { en: 'Select File', ar: 'اختر الملف' },
   modal_close: { en: 'Close', ar: 'إغلاق' },

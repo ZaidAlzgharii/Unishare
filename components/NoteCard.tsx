@@ -93,9 +93,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
           
           <div className="text-xs text-slate-500 dark:text-slate-400 mb-4 space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">{note.course}</span>
-              <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-              <span>{note.program}</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-300">{note.major}</span>
             </div>
             <p>{new Date(note.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
           </div>

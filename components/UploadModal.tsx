@@ -20,14 +20,11 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    program: PROGRAMS[0].name,
-    course: PROGRAMS[0].courses[0],
+    major: PROGRAMS[0].name,
     category: NOTE_CATEGORIES[0],
     uploaderName: user?.name || '',
     file: null as File | null
   });
-
-  const availableCourses = PROGRAMS.find(p => p.name === formData.program)?.courses || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +35,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onSuccess }) => {
       await mockDb.addNote({
         title: formData.title,
         description: formData.description,
-        program: formData.program,
-        course: formData.course,
+        major: formData.major,
         category: formData.category,
         uploaderId: user.id,
         uploaderName: formData.uploaderName || user.name,
@@ -90,25 +86,15 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onSuccess }) => {
              />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('form_program')}</label>
               <select
                 className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-slate-900 dark:text-white"
-                value={formData.program}
-                onChange={(e) => setFormData({...formData, program: e.target.value, course: PROGRAMS.find(p => p.name === e.target.value)?.courses[0] || ''})}
+                value={formData.major}
+                onChange={(e) => setFormData({...formData, major: e.target.value})}
               >
                 {PROGRAMS.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('form_course')}</label>
-              <select
-                className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-slate-900 dark:text-white"
-                value={formData.course}
-                onChange={(e) => setFormData({...formData, course: e.target.value})}
-              >
-                {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
           </div>

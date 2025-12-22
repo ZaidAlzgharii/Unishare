@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Download, AlertTriangle, BrainCircuit, Sparkles, CheckCircle2, MessageSquare } from 'lucide-react';
+import { X, Download, BrainCircuit, Sparkles, MessageSquare, Stars, ChevronDown, Zap, CheckCircle2 } from 'lucide-react';
 import { Note } from '../types';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -15,7 +15,7 @@ interface PreviewModalProps {
 }
 
 const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
-  const { t } = useLanguage();
+  const { t, dir } = useLanguage();
   const [numPages, setNumPages] = useState<number | null>(null);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -31,7 +31,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
         const summary = await mockDb.generateAiSummary(note.id);
         setAiSummary(summary);
     } catch (e) {
-        setAiSummary("Failed to generate summary. Please try again.");
+        setAiSummary("عذراً، حدث خطأ أثناء توليد الملخص. / Sorry, an error occurred while generating the summary.");
     } finally {
         setAiLoading(false);
     }
@@ -41,12 +41,11 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
     if (note.fileType === 'image') {
       return (
         <div 
-          className="flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden min-h-[300px] overflow-y-auto"
+          className="flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden min-h-[300px] border border-slate-200 dark:border-slate-800"
           role="img"
           aria-label={`Preview of ${note.title}`}
-          tabIndex={0}
         >
-          <img src={note.fileUrl} alt={note.title} className="max-w-full max-h-[70vh] object-contain" />
+          <img src={note.fileUrl} alt={note.title} className="max-w-full max-h-[70vh] object-contain shadow-2xl" />
         </div>
       );
     }
@@ -54,31 +53,29 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
     if (note.fileType === 'pdf') {
       return (
         <div 
-          className="bg-slate-100 dark:bg-slate-800 flex justify-center overflow-y-auto max-h-[70vh] p-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+          className="bg-slate-100 dark:bg-slate-800 flex justify-center overflow-y-auto max-h-[70vh] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner"
           aria-label="PDF Document Preview"
-          tabIndex={0}
         >
           <Document
             file={note.fileUrl}
             onLoadSuccess={onDocumentLoadSuccess}
-            className="flex flex-col gap-4"
-            loading={<div className="p-10 text-center text-slate-500 dark:text-slate-400" aria-live="polite">Loading PDF...</div>}
-            error={<div className="p-10 text-center text-red-500" role="alert">Failed to load PDF. Cross-origin issue or invalid file.</div>}
+            className="flex flex-col gap-6"
+            loading={<div className="p-10 text-center text-slate-500 dark:text-slate-400 font-medium">Loading Document Preview...</div>}
+            error={<div className="p-10 text-center text-red-500" role="alert">Failed to load PDF preview.</div>}
           >
-            {/* Render first 3 pages max for preview */}
             {Array.from(new Array(Math.min(numPages || 0, 3)), (el, index) => (
               <Page 
                 key={`page_${index + 1}`} 
                 pageNumber={index + 1} 
                 renderTextLayer={false} 
                 renderAnnotationLayer={false}
-                width={500}
-                className="shadow-md" 
+                width={window.innerWidth < 640 ? 320 : 550}
+                className="shadow-xl rounded-sm overflow-hidden" 
               />
             ))}
             {numPages && numPages > 3 && (
-                <div className="text-center text-slate-500 dark:text-slate-400 py-2">
-                    + {numPages - 3} more pages. Download to view full.
+                <div className="text-center text-slate-500 dark:text-slate-400 py-4 bg-white/50 dark:bg-slate-900/50 rounded-lg backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 italic">
+                    + {numPages - 3} {t('more_pages_text') || 'more pages. Download to view full document.'}
                 </div>
             )}
           </Document>
@@ -86,9 +83,8 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
       );
     }
 
-    // Fallback for DOCX, PPT, etc using Google Docs Viewer
     return (
-      <div className="w-full h-[60vh] bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
+      <div className="w-full h-[60vh] bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
         <iframe
           src={`https://docs.google.com/gview?url=${encodeURIComponent(note.fileUrl)}&embedded=true`}
           className="w-full h-full border-0"
@@ -99,114 +95,206 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-300">
       <div 
-        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col md:flex-row overflow-hidden border border-slate-200 dark:border-slate-800"
+        className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col md:flex-row overflow-hidden border border-white/20"
         role="dialog"
         aria-modal="true"
+        dir={dir}
       >
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 max-h-[95vh]">
-             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 z-10">
-                <div>
-                    <h3 className="font-bold text-lg text-slate-900 dark:text-white truncate max-w-xs md:max-w-md">{note.title}</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{note.program} • {note.course}</p>
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 md:px-8 border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10">
+                <div className="flex items-center gap-4">
+                    <div className="hidden sm:flex w-10 h-10 items-center justify-center rounded-xl bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400">
+                      <Zap className="w-5 h-5 fill-current" />
+                    </div>
+                    <div className="min-w-0">
+                        <h3 className="font-bold text-xl text-slate-900 dark:text-white truncate max-w-[200px] md:max-w-md">{note.title}</h3>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{note.major}</p>
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                     {/* Toggle Comments Mobile */}
-                     <button 
+                <div className="flex items-center gap-2">
+                    <button 
                         onClick={() => setShowComments(!showComments)}
-                        className={`md:hidden p-2 rounded-full transition ${showComments ? 'bg-primary-50 text-primary-600' : 'hover:bg-slate-100 text-slate-500'}`}
+                        className={`p-2.5 rounded-xl transition-all ${showComments ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                      >
                         <MessageSquare className="w-5 h-5" />
                      </button>
                     <button 
                         onClick={onClose} 
-                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition"
+                        className="p-2.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors group"
                         aria-label={t('modal_close')}
                     >
-                        <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                        <X className="w-5 h-5 text-slate-400 group-hover:text-red-500" />
                     </button>
                 </div>
             </div>
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950">
+            <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950/50 p-6 md:px-8 space-y-10">
                 
-                {/* AI Section */}
-                <div className="px-6 pt-6 pb-2">
+                {/* AI SUMMARY WRAPPER */}
+                <section aria-label="AI Summary Section" className="relative group">
                     {!aiSummary && !aiLoading && (
                         <button 
                             onClick={handleGenerateSummary}
-                            className="w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-xl shadow-md flex items-center justify-center gap-2 transition-all group"
+                            className="w-full py-5 bg-gradient-to-r from-violet-600 via-indigo-600 to-primary-600 hover:from-violet-700 hover:via-indigo-700 hover:to-primary-700 text-white rounded-[1.5rem] shadow-xl shadow-violet-500/20 flex items-center justify-center gap-4 transition-all scale-100 hover:scale-[1.01] active:scale-95 border border-white/10"
                         >
-                            <BrainCircuit className="w-5 h-5 group-hover:animate-pulse" />
-                            <span className="font-semibold">{t('btn_ai_summary')}</span>
+                            <BrainCircuit className="w-6 h-6 animate-pulse" />
+                            <div className="flex flex-col items-center">
+                              <span className="font-bold text-lg tracking-wide leading-none">{t('btn_ai_summary')}</span>
+                              <span className="text-[10px] opacity-70 mt-1 uppercase tracking-tighter">English & Arabic Analysis</span>
+                            </div>
+                            <Stars className="w-5 h-5 opacity-70" />
                         </button>
                     )}
 
                     {aiLoading && (
-                        <div className="w-full py-6 bg-white dark:bg-slate-900 border border-violet-100 dark:border-violet-900/30 rounded-xl flex flex-col items-center justify-center gap-3 animate-pulse">
-                            <Sparkles className="w-6 h-6 text-violet-500 animate-spin" />
-                            <span className="text-sm font-medium text-violet-700 dark:text-violet-300">Analyzing document structure...</span>
+                        <div className="w-full py-16 bg-white dark:bg-slate-900 border-2 border-dashed border-violet-200 dark:border-violet-900/50 rounded-[1.5rem] flex flex-col items-center justify-center gap-6 shadow-inner">
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-violet-500 blur-2xl opacity-10 animate-pulse"></div>
+                                <Sparkles className="w-12 h-12 text-violet-500 animate-spin-slow" />
+                            </div>
+                            <div className="text-center">
+                                <span className="text-lg font-bold text-violet-700 dark:text-violet-300 block">Gemini is processing bilingual insights...</span>
+                                <span className="text-sm text-slate-400 mt-2 block font-medium">Reading internal content in EN & AR</span>
+                            </div>
                         </div>
                     )}
 
                     {aiSummary && (
-                        <div className="w-full p-5 bg-gradient-to-br from-white to-violet-50 dark:from-slate-900 dark:to-slate-800 border border-violet-100 dark:border-violet-900/30 rounded-xl relative overflow-hidden group">
-                            <div className="flex items-center gap-2 mb-3 text-violet-700 dark:text-violet-300">
-                                <Sparkles className="w-4 h-4" />
-                                <h4 className="font-bold text-sm uppercase tracking-wider">{t('ai_summary_title')}</h4>
-                            </div>
-                            <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300">
-                                {aiSummary.split('\n').map((line, i) => (
-                                    <p key={i} className="mb-1">{line}</p>
-                                ))}
-                            </div>
+                        <div className="relative p-[2px] bg-gradient-to-br from-violet-400 via-primary-500 to-indigo-600 rounded-[2.2rem] shadow-2xl shadow-violet-500/20 animate-in zoom-in-95 duration-500">
+                          <div className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-[2.1rem] overflow-hidden">
+                              {/* AI Header Strip */}
+                              <div className="px-8 py-4 bg-slate-50/50 dark:bg-slate-800/50 border-b border-violet-100 dark:border-violet-800/30 flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                      <div className="p-2 bg-violet-600 rounded-xl shadow-lg shadow-violet-500/30">
+                                          <BrainCircuit className="w-4 h-4 text-white" />
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <h4 className="font-black text-violet-700 dark:text-violet-300 text-[10px] uppercase tracking-[0.25em]">{t('ai_summary_title')}</h4>
+                                        <span className="text-[8px] text-slate-400 uppercase font-bold tracking-widest">Bilingual Analysis (EN/AR)</span>
+                                      </div>
+                                  </div>
+                                  <Sparkles className="w-4 h-4 text-violet-400 animate-pulse" />
+                              </div>
+
+                              {/* Content Body */}
+                              <div className="p-8 md:p-10">
+                                  {/* Using unicode-bidi and direction auto for better mixed content handling */}
+                                  <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-200 font-medium leading-loose" style={{ unicodeBidi: 'plaintext' }}>
+                                      {aiSummary.split('\n').map((line, i) => {
+                                          const trimmedLine = line.trim();
+                                          if (!trimmedLine) return <div key={i} className="h-4" />;
+                                          
+                                          const isHeader = trimmedLine.match(/^\d\./) || trimmedLine.startsWith('**');
+                                          const isBullet = trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*');
+                                          
+                                          // Simple check for Arabic text to adjust alignment if needed
+                                          const containsArabic = /[\u0600-\u06FF]/.test(trimmedLine);
+                                          
+                                          return (
+                                              <p 
+                                                  key={i} 
+                                                  dir={containsArabic ? 'rtl' : 'ltr'}
+                                                  className={`
+                                                    ${isHeader ? 'font-extrabold text-slate-900 dark:text-white text-lg mt-8 mb-4 border-b border-slate-100 dark:border-slate-800 pb-2' : 'mb-3'}
+                                                    ${isBullet ? 'list-item list-disc ml-6 marker:text-violet-500' : ''}
+                                                    ${containsArabic ? 'text-right' : 'text-left'}
+                                                  `}
+                                                  dangerouslySetInnerHTML={{ 
+                                                      __html: trimmedLine.replace(/\*\*(.*?)\*\*/g, '<b class="text-violet-700 dark:text-violet-400 font-bold">$1</b>') 
+                                                  }}
+                                              />
+                                          );
+                                      })}
+                                  </div>
+
+                                  <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-violet-100 dark:border-violet-800/30 pt-6">
+                                      <span className="text-[10px] font-bold text-violet-400 dark:text-violet-500 uppercase tracking-widest flex items-center gap-2">
+                                          <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse"></div>
+                                          Deep File Analysis - Gemini 3.0
+                                      </span>
+                                      <button 
+                                          onClick={handleGenerateSummary}
+                                          className="text-[10px] font-black text-slate-400 hover:text-violet-600 transition-colors uppercase tracking-[0.1em] flex items-center gap-2"
+                                      >
+                                          <ChevronDown className="w-3 h-3" />
+                                          Rerun Bilingual Analysis
+                                      </button>
+                                  </div>
+                              </div>
+                          </div>
+                          
+                          {/* Decorative Background Element */}
+                          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-violet-500/10 rounded-full blur-3xl pointer-events-none"></div>
                         </div>
                     )}
+                </section>
+
+                {/* FILE PREVIEW */}
+                <div className="space-y-6">
+                    <div className="flex items-center gap-3 px-2">
+                        <div className="w-1 h-6 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+                        <h4 className="font-bold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest">{t('file_preview_title') || 'Original Document Preview'}</h4>
+                    </div>
+                    {renderContent()}
                 </div>
 
-                {/* File Preview */}
-                <div className="p-6">
-                    {renderContent()}
-                    <div className="mt-4 p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                        <h4 className="font-semibold text-sm text-slate-900 dark:text-white mb-2">Description</h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{note.description}</p>
-                    </div>
+                {/* DESCRIPTION */}
+                <div className="p-8 bg-white dark:bg-slate-900 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                       <CheckCircle2 className="w-4 h-4 text-primary-500" />
+                       {t('form_desc')}
+                    </h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{note.description}</p>
                 </div>
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-end gap-2 z-10">
-                <a 
-                    href={note.fileUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 font-medium rounded-lg transition shadow-md"
-                >
-                    <Download className="w-4 h-4" />
-                    {t('btn_download')}
-                </a>
+            <div className="p-6 md:px-8 border-t border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex flex-col sm:flex-row justify-between items-center gap-4 z-10">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-slate-500 border border-slate-200 dark:border-slate-700">
+                        {note.uploaderName.charAt(0)}
+                    </div>
+                    <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter">{t('table_uploader')}</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">{note.uploaderName}</p>
+                    </div>
+                </div>
+                <div className="flex gap-3 w-full sm:w-auto">
+                    <a 
+                        href={note.fileUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 font-bold rounded-xl transition shadow-xl shadow-slate-900/10 active:scale-95"
+                    >
+                        <Download className="w-4 h-4" />
+                        {t('btn_download')}
+                    </a>
+                </div>
             </div>
         </div>
 
         {/* Sidebar (Comments) */}
         {showComments && (
-            <div className="hidden md:block h-full border-l border-slate-200 dark:border-slate-800">
+            <div className="hidden lg:block h-full border-l border-slate-100 dark:border-slate-800 w-[400px]">
                 <CommentSection noteId={note.id} />
             </div>
         )}
         
         {/* Mobile Comment Drawer Overlay */}
         {showComments && (
-            <div className="md:hidden absolute inset-0 z-20 bg-white dark:bg-slate-900 flex flex-col animate-in slide-in-from-right duration-200">
-                 <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
-                    <h3 className="font-bold">{t('comments_title')}</h3>
-                    <button onClick={() => setShowComments(false)} className="p-2"><X className="w-5 h-5" /></button>
+            <div className="lg:hidden absolute inset-0 z-20 bg-white dark:bg-slate-900 flex flex-col animate-in slide-in-from-right duration-300">
+                 <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
+                    <h3 className="font-bold text-lg">{t('comments_title')}</h3>
+                    <button onClick={() => setShowComments(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"><X className="w-6 h-6" /></button>
                  </div>
-                 <CommentSection noteId={note.id} />
+                 <div className="flex-1 overflow-hidden">
+                    <CommentSection noteId={note.id} />
+                 </div>
             </div>
         )}
 

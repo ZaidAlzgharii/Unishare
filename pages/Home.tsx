@@ -112,11 +112,11 @@ const Home: React.FC = () => {
     setActiveTab('all');
   };
 
-  // Base filtering for global controls (Search & Program)
+  // Base filtering for global controls (Search & Major)
   const baseNotes = notes.filter(note => {
     if (!note.isApproved) return false;
-    if (programFilter && note.program !== programFilter) return false;
-    if (search && !note.title.toLowerCase().includes(search.toLowerCase()) && !note.course.toLowerCase().includes(search.toLowerCase())) return false;
+    if (programFilter && note.major !== programFilter) return false;
+    if (search && !note.title.toLowerCase().includes(search.toLowerCase()) && !note.major.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 

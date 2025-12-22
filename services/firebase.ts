@@ -1,5 +1,6 @@
 import { Note, Comment, User } from '../types';
 import { MOCK_NOTES } from '../constants';
+import { GoogleGenAI } from "@google/genai";
 
 // In-memory store to simulate database persistence during session
 let memoryNotes: Note[] = [...MOCK_NOTES];
@@ -16,7 +17,6 @@ export const mockDb = {
   getMyNotes: async (userId: string): Promise<Note[]> => {
     await delay(600);
     return memoryNotes.filter(n => n.uploaderId === userId || (userId === 'std_1' && n.uploaderId === 'std_1')); 
-    // ^ Mock logic: ensuring demo user sees data even if IDs mismatch in early mock
   },
 
   addNote: async (note: Omit<Note, 'id' | 'date' | 'isApproved' | 'upvotes'>): Promise<Note> => {
@@ -61,11 +61,65 @@ export const mockDb = {
   },
 
   generateAiSummary: async (noteId: string): Promise<string> => {
-    await delay(2500); // Simulate AI processing time
     const note = memoryNotes.find(n => n.id === noteId);
-    if (!note) return "Could not generate summary.";
-    
-    return `Here are the key takeaways from "${note.title}":\n\n1. **Core Concept**: The document focuses heavily on ${note.category} principles within the ${note.program} field.\n2. **Key Definitions**: Defines critical terms relevant to ${note.course}.\n3. **Analysis**: Provides a comparative study that highlights recent trends.\n4. **Conclusion**: Summarizes that foundational knowledge is key for advanced application.`;
+    if (!note) return "Error: Note not found.";
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      
+      // Fetch the actual file content
+      const fileResponse = await fetch(note.fileUrl);
+      const blob = await fileResponse.blob();
+      
+      // Convert blob to base64
+      const base64Data = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+        reader.readAsDataURL(blob);
+      });
+
+      const prompt = `Act as an expert academic analyst. Analyze the ATTACHED FILE (image or PDF) and provide a professional, bilingual summary in both ENGLISH and ARABIC.
+      
+      CRITICAL: Summarize only the specific text and data found INSIDE THIS FILE. Do not provide general information about the subject.
+      
+      Structure the response as follows (Repeat each section in both languages):
+
+      1. **Core Concept / الفكرة الأساسية**
+         - (One paragraph in English)
+         - (One paragraph in Arabic)
+
+      2. **Key Insights / أبرز النقاط**
+         - (List 5 key points in English)
+         - (List 5 key points in Arabic)
+
+      3. **Important Terminology / المصطلحات الهامة**
+         - (List specific terms/formulas found in the file with bilingual translations/explanations)
+
+      Keep the tone academic, encouraging, and helpful for students. Ensure the transition between languages is clear.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: {
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                mimeType: blob.type || (note.fileType === 'pdf' ? 'application/pdf' : 'image/jpeg'),
+                data: base64Data
+              }
+            }
+          ]
+        },
+      });
+
+      return response.text || "Could not analyze the document content.";
+    } catch (error) {
+      console.error("Gemini API Error:", error);
+      return "An error occurred while analyzing the file. Please ensure the file is valid and try again.";
+    }
   },
 
   // Comments

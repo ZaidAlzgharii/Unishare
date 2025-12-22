@@ -1,4 +1,3 @@
-
 export type UserRole = 'student' | 'admin' | 'owner';
 
 export interface User {
@@ -14,8 +13,7 @@ export interface Note {
   id: string;
   title: string;
   description: string;
-  program: string;
-  course: string;
+  major: string;
   category: string;
   uploaderId: string;
   uploaderName: string;
@@ -38,7 +36,7 @@ export interface Comment {
 
 export interface Program {
   name: string;
-  courses: string[];
+  courses?: string[]; // Made optional as courses are being phased out
 }
 
 export type Language = 'en' | 'ar';
