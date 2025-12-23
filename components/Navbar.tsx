@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { BookOpen, Shield, Moon, Sun, Save, LogOut, User as UserIcon, LogIn } from 'lucide-react';
+import { Shield, Moon, Sun, Save, LogOut, User as UserIcon, LogIn } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 
 interface NavbarProps {
@@ -28,10 +28,8 @@ const Navbar: React.FC<NavbarProps> = ({ onSaveSession }) => {
     <nav className="sticky top-0 z-40 w-full backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Brand */}
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg group-hover:bg-primary-200 dark:group-hover:bg-primary-900/50 transition-colors">
-            <BookOpen className="w-5 h-5 text-primary-700 dark:text-primary-400" />
-          </div>
+        <Link to="/" className="flex items-center gap-3 group">
+          <img src="https://cdn-icons-png.flaticon.com/512/3413/3413535.png" alt="UniShare Logo" className="w-9 h-9 object-contain transition-transform group-hover:scale-110" />
           <span className="font-bold text-xl text-slate-900 dark:text-white tracking-tight">{t('nav_brand')}</span>
         </Link>
 

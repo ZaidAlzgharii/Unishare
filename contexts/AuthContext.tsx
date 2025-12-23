@@ -13,6 +13,8 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, pass: string) => Promise<{ success: boolean; message?: string }>;
   register: (name: string, email: string, pass: string, role: UserRole) => Promise<RegisterResult>;
+  verifyEmail: (email: string, token: string) => Promise<{ success: boolean; message?: string }>;
+  resendOtp: (email: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
 }
 
@@ -89,14 +91,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const login = async (email: string, pass: string): Promise<{ success: boolean; message?: string }> => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password: pass,
     });
+    
     if (error) {
         console.error("Login failed:", error.message);
+        // Supabase returns "Email not confirmed" if verification is pending
         return { success: false, message: error.message };
     }
+    
     return { success: true };
   };
 
@@ -111,8 +116,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               name: name,
               role: role,
               avatar_url: `https://api.dicebear.com/9.x/avataaars/svg?seed=${name.replace(' ', '')}`
-            },
-            emailRedirectTo: window.location.origin
+            }
           }
         });
 
@@ -126,7 +130,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { 
                 success: true,
                 emailConfirmationRequired: true, 
-                message: "Registration successful. Please check your email to verify your account." 
+                message: "Registration successful. Please check your email for the OTP code." 
             };
         }
 
@@ -148,13 +152,53 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const verifyEmail = async (email: string, token: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'signup'
+      });
+
+      if (error) {
+        return { success: false, message: error.message };
+      }
+
+      if (data.user && data.session) {
+         await fetchProfile(data.user.id, data.user.email!, data.user.created_at);
+         return { success: true };
+      }
+
+      return { success: false, message: "Verification failed. Please try again." };
+
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+  };
+
+  const resendOtp = async (email: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      });
+
+      if (error) {
+        return { success: false, message: error.message };
+      }
+      return { success: true, message: "Code resent successfully" };
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, verifyEmail, resendOtp, logout }}>
       {children}
     </AuthContext.Provider>
   );

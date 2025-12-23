@@ -1,25 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
-import { Mail, Lock, User, ArrowRight, Loader2, Moon, Sun, Globe, CheckCircle2, BookOpen } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Loader2, Moon, Sun, Globe, CheckCircle2, KeyRound, RefreshCw } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { t, dir, language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
-  const { login, register } = useAuth();
+  const { login, register, verifyEmail, resendOtp } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
 
-  const [view, setView] = useState<'login' | 'register'>('login');
+  const [view, setView] = useState<'login' | 'register' | 'verify'>('login');
   const [loading, setLoading] = useState(false);
   
   // Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [otp, setOtp] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
+
+  // Resend Timer State
+  const [resendTimer, setResendTimer] = useState(0);
+
+  useEffect(() => {
+    let interval: any;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  const handleResend = async () => {
+    if (resendTimer > 0) return;
+    setLoading(true);
+    try {
+        const result = await resendOtp(pendingEmail);
+        if (result.success) {
+            addToast('Code resent! Check your inbox.', 'success');
+            setResendTimer(60); // 60 second cooldown
+        } else {
+            addToast(result.message || 'Failed to resend code', 'error');
+        }
+    } catch (e) {
+        addToast('Error resending code', 'error');
+    } finally {
+        setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,10 +63,11 @@ const Login: React.FC = () => {
         const result = await register(name, email, password, 'student');
         if (result.success) {
             if (result.emailConfirmationRequired) {
-                // If email verification is required, alert user and switch to login
+                // If email verification is required, switch to verify view
                 addToast(t('register_verification_sent'), 'success');
-                setView('login');
-                setPassword(''); // Clear password for security
+                setPendingEmail(email);
+                setView('verify');
+                setResendTimer(60); // Start timer immediately on success
             } else {
                 addToast(`${t('toast_welcome')}, ${name}!`, 'success');
                 navigate('/');
@@ -42,6 +76,16 @@ const Login: React.FC = () => {
             addToast(result.message || 'Registration failed', 'error');
         }
       } 
+      else if (view === 'verify') {
+        // Verify OTP
+        const result = await verifyEmail(pendingEmail, otp);
+        if (result.success) {
+            addToast(t('toast_welcome'), 'success');
+            navigate('/');
+        } else {
+            addToast(result.message || 'Verification failed', 'error');
+        }
+      }
       else {
         // Standard Login
         const result = await login(email, password);
@@ -53,6 +97,9 @@ const Login: React.FC = () => {
           const msg = result.message?.toLowerCase() || '';
           if (msg.includes('email not confirmed')) {
              addToast(t('login_error_verify'), 'error');
+             setPendingEmail(email);
+             setView('verify');
+             setResendTimer(0); // Allow immediate resend if they came from login failure
           } else {
              addToast(result.message || t('login_error'), 'error');
           }
@@ -75,8 +122,8 @@ const Login: React.FC = () => {
          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center mix-blend-overlay opacity-30"></div>
          
          <div className="relative z-10 p-12 text-white max-w-xl">
-             <div className="mb-8 p-3 bg-primary-500/20 backdrop-blur-md w-fit rounded-xl border border-primary-500/30">
-                <BookOpen className="w-8 h-8 text-primary-400" />
+             <div className="mb-8 p-3 bg-white/10 backdrop-blur-md w-fit rounded-2xl border border-white/20 shadow-xl">
+                <img src="https://cdn-icons-png.flaticon.com/512/3413/3413535.png" alt="UniShare" className="w-12 h-12 object-contain" />
              </div>
              <h1 className="text-5xl font-extrabold mb-6 tracking-tight leading-tight">Share Knowledge,<br/>Grow Together.</h1>
              <p className="text-xl text-slate-300 leading-relaxed mb-8">Join the premier academic community. Access verified notes, share your insights, and elevate your learning journey.</p>
@@ -121,16 +168,50 @@ const Login: React.FC = () => {
         <div className="w-full max-w-md" dir={dir}>
             <div className="text-center mb-10 lg:text-left">
                 <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-3">
-                    {view === 'register' ? t('btn_register') : t('login_title')}
+                    {view === 'register' ? t('btn_register') : view === 'verify' ? 'Verify Account' : t('login_title')}
                 </h2>
                 <p className="text-slate-500 dark:text-slate-400">
-                    {view === 'register' ? t('register_subtitle') : t('login_subtitle')}
+                    {view === 'register' ? t('register_subtitle') : view === 'verify' ? `Enter the code sent to ${pendingEmail}` : t('login_subtitle')}
                 </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
                 
-                {/* LOGIN / REGISTER FIELDS */}
+                {/* VERIFICATION VIEW */}
+                {view === 'verify' && (
+                    <div className="animate-in slide-in-from-right-4 fade-in duration-300 space-y-5">
+                         <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2 ml-1">One-Time Password (OTP)</label>
+                            <div className="relative group">
+                                <KeyRound className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary-500 transition-colors ${dir === 'rtl' ? 'right-4' : 'left-4'}`} />
+                                <input
+                                    type="text"
+                                    required
+                                    value={otp}
+                                    onChange={(e) => setOtp(e.target.value)}
+                                    className={`w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-3.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition font-medium tracking-widest text-lg ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'}`}
+                                    placeholder="123456"
+                                    maxLength={6}
+                                />
+                            </div>
+                         </div>
+
+                        <div className="flex items-center justify-between text-xs">
+                             <p className="text-slate-400 ml-1">Check your spam folder.</p>
+                             <button
+                                type="button"
+                                onClick={handleResend}
+                                disabled={resendTimer > 0 || loading}
+                                className={`font-bold flex items-center gap-1.5 transition ${resendTimer > 0 ? 'text-slate-400 cursor-not-allowed' : 'text-primary-600 hover:text-primary-700'}`}
+                             >
+                                <RefreshCw className={`w-3 h-3 ${loading && resendTimer === 0 ? 'animate-spin' : ''}`} />
+                                {resendTimer > 0 ? `Resend code in ${resendTimer}s` : 'Resend Code'}
+                             </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* REGISTER FIELDS */}
                 {view === 'register' && (
                 <div className="animate-in slide-in-from-bottom-2 fade-in duration-300">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2 ml-1">{t('name_label')}</label>
@@ -148,46 +229,51 @@ const Login: React.FC = () => {
                 </div>
                 )}
 
-                <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2 ml-1">{t('email_label')}</label>
-                    <div className="relative group">
-                        <Mail className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary-500 transition-colors ${dir === 'rtl' ? 'right-4' : 'left-4'}`} />
-                        <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className={`w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-3.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition font-medium ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'} disabled:opacity-50`}
-                        placeholder="student@university.edu"
-                        />
-                    </div>
-                </div>
+                {/* COMMON FIELDS (Hidden in Verify mode) */}
+                {view !== 'verify' && (
+                    <>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2 ml-1">{t('email_label')}</label>
+                            <div className="relative group">
+                                <Mail className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary-500 transition-colors ${dir === 'rtl' ? 'right-4' : 'left-4'}`} />
+                                <input
+                                type="email"
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className={`w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-3.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition font-medium ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'} disabled:opacity-50`}
+                                placeholder="student@university.edu"
+                                />
+                            </div>
+                        </div>
 
-                <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2 ml-1">{t('password_label')}</label>
-                    <div className="relative group">
-                        <Lock className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary-500 transition-colors ${dir === 'rtl' ? 'right-4' : 'left-4'}`} />
-                        <input
-                        type="password"
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className={`w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-3.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition font-medium ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'}`}
-                        placeholder="••••••••"
-                        />
-                    </div>
-                </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2 ml-1">{t('password_label')}</label>
+                            <div className="relative group">
+                                <Lock className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary-500 transition-colors ${dir === 'rtl' ? 'right-4' : 'left-4'}`} />
+                                <input
+                                type="password"
+                                required
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className={`w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-3.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition font-medium ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'}`}
+                                placeholder="••••••••"
+                                />
+                            </div>
+                        </div>
+                    </>
+                )}
 
                 <button
                     type="submit"
                     disabled={loading}
                     className="w-full py-4 bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-xl font-bold text-lg shadow-xl shadow-primary-500/20 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 active:scale-95"
                 >
-                    {loading ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
+                    {loading && view !== 'verify' ? ( // Don't show generic loader if resending in verify view
+                        <Loader2 className="w-6 h-6 animate-spin" />
                     ) : (
                     <>
-                        {view === 'register' ? t('btn_register') : t('btn_login')}
+                        {view === 'register' ? t('btn_register') : view === 'verify' ? 'Verify Email' : t('btn_login')}
                         <ArrowRight className="w-5 h-5" />
                     </>
                     )}
@@ -195,12 +281,21 @@ const Login: React.FC = () => {
             </form>
 
             <div className="mt-8 text-center space-y-4">
-                <button 
-                    onClick={() => setView(view === 'login' ? 'register' : 'login')}
-                    className="text-slate-600 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 font-semibold transition"
-                >
-                    {view === 'register' ? t('toggle_login') : t('toggle_register')}
-                </button>
+                {view !== 'verify' ? (
+                    <button 
+                        onClick={() => setView(view === 'login' ? 'register' : 'login')}
+                        className="text-slate-600 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 font-semibold transition"
+                    >
+                        {view === 'register' ? t('toggle_login') : t('toggle_register')}
+                    </button>
+                ) : (
+                    <button 
+                        onClick={() => setView('login')}
+                        className="text-slate-600 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 font-semibold transition"
+                    >
+                        Back to Login
+                    </button>
+                )}
             </div>
 
             {/* Simple footer for login view */}

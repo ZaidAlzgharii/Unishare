@@ -55,6 +55,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
         <div 
           className="bg-slate-100 dark:bg-slate-800 flex justify-center overflow-y-auto max-h-[70vh] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner"
           aria-label="PDF Document Preview"
+          role="region"
         >
           <Document
             file={note.fileUrl}
@@ -100,6 +101,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
         className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col md:flex-row overflow-hidden border border-white/20"
         role="dialog"
         aria-modal="true"
+        aria-labelledby="preview-modal-title"
         dir={dir}
       >
         {/* Main Content Area */}
@@ -107,11 +109,11 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
             {/* Header */}
             <div className="flex items-center justify-between p-5 md:px-8 border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10">
                 <div className="flex items-center gap-4">
-                    <div className="hidden sm:flex w-10 h-10 items-center justify-center rounded-xl bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400">
+                    <div className="hidden sm:flex w-10 h-10 items-center justify-center rounded-xl bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400" aria-hidden="true">
                       <Zap className="w-5 h-5 fill-current" />
                     </div>
                     <div className="min-w-0">
-                        <h3 className="font-bold text-xl text-slate-900 dark:text-white truncate max-w-[200px] md:max-w-md">{note.title}</h3>
+                        <h3 id="preview-modal-title" className="font-bold text-xl text-slate-900 dark:text-white truncate max-w-[200px] md:max-w-md">{note.title}</h3>
                         <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{note.major}</p>
                     </div>
                 </div>
@@ -119,6 +121,9 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
                     <button 
                         onClick={() => setShowComments(!showComments)}
                         className={`p-2.5 rounded-xl transition-all ${showComments ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                        aria-label={showComments ? "Hide comments" : "Show comments"}
+                        aria-expanded={showComments}
+                        aria-controls="comments-sidebar"
                      >
                         <MessageSquare className="w-5 h-5" />
                      </button>
@@ -141,18 +146,19 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
                         <button 
                             onClick={handleGenerateSummary}
                             className="w-full py-5 bg-gradient-to-r from-violet-600 via-indigo-600 to-primary-600 hover:from-violet-700 hover:via-indigo-700 hover:to-primary-700 text-white rounded-[1.5rem] shadow-xl shadow-violet-500/20 flex items-center justify-center gap-4 transition-all scale-100 hover:scale-[1.01] active:scale-95 border border-white/10"
+                            aria-label={t('btn_ai_summary')}
                         >
-                            <BrainCircuit className="w-6 h-6 animate-pulse" />
+                            <BrainCircuit className="w-6 h-6 animate-pulse" aria-hidden="true" />
                             <div className="flex flex-col items-center">
                               <span className="font-bold text-lg tracking-wide leading-none">{t('btn_ai_summary')}</span>
                               <span className="text-[10px] opacity-70 mt-1 uppercase tracking-tighter">English & Arabic Analysis</span>
                             </div>
-                            <Stars className="w-5 h-5 opacity-70" />
+                            <Stars className="w-5 h-5 opacity-70" aria-hidden="true" />
                         </button>
                     )}
 
                     {aiLoading && (
-                        <div className="w-full py-16 bg-white dark:bg-slate-900 border-2 border-dashed border-violet-200 dark:border-violet-900/50 rounded-[1.5rem] flex flex-col items-center justify-center gap-6 shadow-inner">
+                        <div role="status" className="w-full py-16 bg-white dark:bg-slate-900 border-2 border-dashed border-violet-200 dark:border-violet-900/50 rounded-[1.5rem] flex flex-col items-center justify-center gap-6 shadow-inner">
                             <div className="relative">
                                 <div className="absolute inset-0 bg-violet-500 blur-2xl opacity-10 animate-pulse"></div>
                                 <Sparkles className="w-12 h-12 text-violet-500 animate-spin-slow" />
@@ -171,14 +177,14 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
                               <div className="px-8 py-4 bg-slate-50/50 dark:bg-slate-800/50 border-b border-violet-100 dark:border-violet-800/30 flex items-center justify-between">
                                   <div className="flex items-center gap-3">
                                       <div className="p-2 bg-violet-600 rounded-xl shadow-lg shadow-violet-500/30">
-                                          <BrainCircuit className="w-4 h-4 text-white" />
+                                          <BrainCircuit className="w-4 h-4 text-white" aria-hidden="true" />
                                       </div>
                                       <div className="flex flex-col">
                                         <h4 className="font-black text-violet-700 dark:text-violet-300 text-[10px] uppercase tracking-[0.25em]">{t('ai_summary_title')}</h4>
                                         <span className="text-[8px] text-slate-400 uppercase font-bold tracking-widest">Bilingual Analysis (EN/AR)</span>
                                       </div>
                                   </div>
-                                  <Sparkles className="w-4 h-4 text-violet-400 animate-pulse" />
+                                  <Sparkles className="w-4 h-4 text-violet-400 animate-pulse" aria-hidden="true" />
                               </div>
 
                               {/* Content Body */}
@@ -220,6 +226,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
                                       <button 
                                           onClick={handleGenerateSummary}
                                           className="text-[10px] font-black text-slate-400 hover:text-violet-600 transition-colors uppercase tracking-[0.1em] flex items-center gap-2"
+                                          aria-label="Rerun Bilingual Analysis"
                                       >
                                           <ChevronDown className="w-3 h-3" />
                                           Rerun Bilingual Analysis
@@ -229,7 +236,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
                           </div>
                           
                           {/* Decorative Background Element */}
-                          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-violet-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
                         </div>
                     )}
                 </section>
@@ -237,7 +244,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
                 {/* FILE PREVIEW */}
                 <div className="space-y-6">
                     <div className="flex items-center gap-3 px-2">
-                        <div className="w-1 h-6 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+                        <div className="w-1 h-6 bg-slate-200 dark:bg-slate-700 rounded-full" aria-hidden="true"></div>
                         <h4 className="font-bold text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest">{t('file_preview_title') || 'Original Document Preview'}</h4>
                     </div>
                     {renderContent()}
@@ -246,7 +253,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
                 {/* DESCRIPTION */}
                 <div className="p-8 bg-white dark:bg-slate-900 rounded-[1.5rem] border border-slate-200 dark:border-slate-800 shadow-sm">
                     <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                       <CheckCircle2 className="w-4 h-4 text-primary-500" />
+                       <CheckCircle2 className="w-4 h-4 text-primary-500" aria-hidden="true" />
                        {t('form_desc')}
                     </h4>
                     <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{note.description}</p>
@@ -270,6 +277,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 font-bold rounded-xl transition shadow-xl shadow-slate-900/10 active:scale-95"
+                        aria-label={`${t('btn_download')} - ${note.title}`}
                     >
                         <Download className="w-4 h-4" />
                         {t('btn_download')}
@@ -280,17 +288,17 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
 
         {/* Sidebar (Comments) */}
         {showComments && (
-            <div className="hidden lg:block h-full border-l border-slate-100 dark:border-slate-800 w-[400px]">
+            <div id="comments-sidebar" className="hidden lg:block h-full border-l border-slate-100 dark:border-slate-800 w-[400px]">
                 <CommentSection noteId={note.id} />
             </div>
         )}
         
         {/* Mobile Comment Drawer Overlay */}
         {showComments && (
-            <div className="lg:hidden absolute inset-0 z-20 bg-white dark:bg-slate-900 flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="lg:hidden absolute inset-0 z-20 bg-white dark:bg-slate-900 flex flex-col animate-in slide-in-from-right duration-300" role="dialog" aria-label="Comments" aria-modal="false">
                  <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
                     <h3 className="font-bold text-lg">{t('comments_title')}</h3>
-                    <button onClick={() => setShowComments(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"><X className="w-6 h-6" /></button>
+                    <button onClick={() => setShowComments(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full" aria-label="Close comments"><X className="w-6 h-6" /></button>
                  </div>
                  <div className="flex-1 overflow-hidden">
                     <CommentSection noteId={note.id} />
