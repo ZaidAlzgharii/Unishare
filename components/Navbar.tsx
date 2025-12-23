@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { BookOpen, Shield, Globe, Moon, Sun, Save, LogOut, User as UserIcon, LogIn } from 'lucide-react';
+import { BookOpen, Shield, Moon, Sun, Save, LogOut, User as UserIcon, LogIn } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 
 interface NavbarProps {
@@ -73,14 +73,29 @@ const Navbar: React.FC<NavbarProps> = ({ onSaveSession }) => {
             {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
           </button>
 
-          {/* Language Toggle */}
-          <button
-            onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
-            className="flex items-center gap-1 text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400 text-sm font-medium px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-          >
-            <Globe className="w-4 h-4" />
-            <span>{language.toUpperCase()}</span>
-          </button>
+          {/* Language Toggle - Segmented Control */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-slate-700" dir="ltr">
+            <button
+              onClick={() => setLanguage('en')}
+              className={`px-2 py-1 text-xs font-bold rounded-md transition-all ${
+                language === 'en' 
+                  ? 'bg-white dark:bg-slate-600 text-primary-600 dark:text-primary-400 shadow-sm' 
+                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => setLanguage('ar')}
+              className={`px-2 py-1 text-xs font-bold rounded-md transition-all ${
+                language === 'ar' 
+                  ? 'bg-white dark:bg-slate-600 text-primary-600 dark:text-primary-400 shadow-sm' 
+                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              ع
+            </button>
+          </div>
 
           <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
 

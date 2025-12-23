@@ -12,7 +12,13 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<Language>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('unishare_lang');
+      return (saved === 'en' || saved === 'ar') ? saved : 'en';
+    }
+    return 'en';
+  });
 
   const t = (key: string): string => {
     const entry = TRANSLATIONS[key];
@@ -23,6 +29,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   const dir = language === 'ar' ? 'rtl' : 'ltr';
 
   useEffect(() => {
+    localStorage.setItem('unishare_lang', language);
     document.documentElement.dir = dir;
     document.documentElement.lang = language;
   }, [dir, language]);
