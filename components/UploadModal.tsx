@@ -3,7 +3,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { mockDb } from '../services/firebase';
-import { PROGRAMS, NOTE_CATEGORIES } from '../constants';
+import { NOTE_CATEGORIES } from '../constants';
 import { X, UploadCloud, Loader2 } from 'lucide-react';
 
 interface UploadModalProps {
@@ -20,7 +20,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    major: PROGRAMS[0].name,
+    major: '',
     category: NOTE_CATEGORIES[0],
     uploaderName: user?.name || '',
     file: null as File | null
@@ -29,6 +29,11 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onSuccess }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.file || !user) return;
+
+    if (!formData.major.trim()) {
+      addToast('Please specify a major or course', 'error');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -39,14 +44,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onSuccess }) => {
         category: formData.category,
         uploaderId: user.id,
         uploaderName: formData.uploaderName || user.name,
-        fileUrl: URL.createObjectURL(formData.file), // Mock URL
+        file: formData.file,
+        fileUrl: '', // Will be filled by backend
         fileType: formData.file.type.includes('image') ? 'image' : formData.file.type.includes('pdf') ? 'pdf' : 'docx'
       });
       addToast(t('toast_upload_success'), 'success');
       onSuccess();
       onClose();
     } catch (error) {
-      addToast('Upload failed', 'error');
+      console.error(error);
+      addToast('Upload failed. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -71,6 +78,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onSuccess }) => {
               className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none text-slate-900 dark:text-white transition"
               value={formData.title}
               onChange={(e) => setFormData({...formData, title: e.target.value})}
+              placeholder="Ex: Introduction to CS Midterm"
             />
           </div>
 
@@ -89,13 +97,14 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onSuccess }) => {
           <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('form_program')}</label>
-              <select
-                className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-slate-900 dark:text-white"
+              <input
+                required
+                type="text"
+                className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none text-slate-900 dark:text-white transition"
                 value={formData.major}
                 onChange={(e) => setFormData({...formData, major: e.target.value})}
-              >
-                {PROGRAMS.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
-              </select>
+                placeholder="Ex: Computer Science, Biology, etc."
+              />
             </div>
           </div>
 

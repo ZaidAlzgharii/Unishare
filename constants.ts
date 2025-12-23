@@ -1,22 +1,9 @@
 import { Program, TranslationDictionary, Note } from './types';
 
-export const PROGRAMS: Program[] = [
-  // NATURAL SCIENCES AND COMPUTING DIVISION
-  { name: 'Molecular Genetics Biology' },
-  { name: 'Computer Science' },
-  
-  // SOCIAL SCIENCES DIVISION
-  { name: 'Social Thought, Economy, and Policy (STEP)' },
-  { name: 'Global Studies and Diplomacy' },
-  { name: 'Human Rights and International Law' },
+// Removed hardcoded programs to allow flexible inputs
+export const PROGRAMS: Program[] = [];
 
-  // HUMANITIES AND PRACTICING ARTS DIVISION
-  { name: 'Literature and Society' },
-  { name: 'Digital Media and Communication' },
-  { name: 'Urban Studies' }
-];
-
-export const NOTE_CATEGORIES = ['Summary', 'Lecture Notes', 'Past Exam', 'Assignment', 'Cheatsheet'];
+export const NOTE_CATEGORIES = ['Summary', 'Lecture Notes', 'Past Exam', 'Assignment', 'Cheatsheet', 'Project'];
 
 export const TRANSLATIONS: TranslationDictionary = {
   nav_brand: { en: 'UniShare', ar: 'يوني شير' },
@@ -28,7 +15,7 @@ export const TRANSLATIONS: TranslationDictionary = {
   nav_logout: { en: 'Logout', ar: 'خروج' },
   hero_title: { en: 'Find & Share University Notes', ar: 'اعثر على وشارك الملاحظات الجامعية' },
   hero_subtitle: { en: 'Access thousands of verified study materials from top students. Level up your grades today.', ar: 'الوصول إلى الآلاف من المواد الدراسية المعتمدة من أفضل الطلاب. ارفع درجاتك اليوم.' },
-  search_placeholder: { en: 'Search majors, topics, or keywords...', ar: 'ابحث عن التخصصات، المواضيع، أو الكلمات المفتاحية...' },
+  search_placeholder: { en: 'Search for courses, majors, or topics...', ar: 'ابحث عن الدورات، التخصصات، أو المواضيع...' },
   filter_program: { en: 'Filter by Major', ar: 'تصفية حسب التخصص' },
   sort_date_newest: { en: 'Date (Newest)', ar: 'التاريخ (الأحدث)' },
   sort_date_oldest: { en: 'Date (Oldest)', ar: 'التاريخ (الأقدم)' },
@@ -44,20 +31,30 @@ export const TRANSLATIONS: TranslationDictionary = {
   btn_approve: { en: 'Approve', ar: 'قبول' },
   btn_reject: { en: 'Reject', ar: 'رفض' },
   btn_delete: { en: 'Delete', ar: 'حذف' },
+  btn_report: { en: 'Report', ar: 'إبلاغ' },
+  btn_submit_report: { en: 'Submit Report', ar: 'إرسال البلاغ' },
   btn_ai_summary: { en: 'AI Summary', ar: 'ملخص الذكاء الاصطناعي' },
   btn_reset_filters: { en: 'Reset Filters', ar: 'إعادة تعيين التصفيات' },
+  btn_confirm: { en: 'Confirm', ar: 'تأكيد' },
+  confirm_action_title: { en: 'Confirm Action', ar: 'تأكيد الإجراء' },
   status_pending: { en: 'Pending', ar: 'قيد الانتظار' },
   status_approved: { en: 'Approved', ar: 'مقبول' },
   upload_title: { en: 'Upload New Note', ar: 'رفع ملاحظة جديدة' },
   form_title: { en: 'Title', ar: 'العنوان' },
   form_desc: { en: 'Description', ar: 'الوصف' },
-  form_program: { en: 'Major', ar: 'التخصص' },
+  form_program: { en: 'Major / Course', ar: 'التخصص / المادة' },
   form_category: { en: 'Category', ar: 'الفئة' },
   form_file: { en: 'Select File', ar: 'اختر الملف' },
   modal_close: { en: 'Close', ar: 'إغلاق' },
+  report_modal_title: { en: 'Report this Note', ar: 'الإبلاغ عن هذه الملاحظة' },
+  report_reason_spam: { en: 'Spam or Misleading', ar: 'بريد عشوائي أو مضلل' },
+  report_reason_inappropriate: { en: 'Inappropriate Content', ar: 'محتوى غير لائق' },
+  report_reason_wrong_category: { en: 'Wrong Category/Major', ar: 'فئة/تخصص خاطئ' },
+  report_reason_other: { en: 'Other', ar: 'أخرى' },
   toast_upload_success: { en: 'Note uploaded successfully!', ar: 'تم رفع الملاحظة بنجاح!' },
   toast_approve_success: { en: 'Note approved.', ar: 'تم قبول الملاحظة.' },
   toast_delete_success: { en: 'Note deleted.', ar: 'تم حذف الملاحظة.' },
+  toast_report_success: { en: 'Report submitted. Thank you.', ar: 'تم إرسال البلاغ. شكراً لك.' },
   toast_saved: { en: 'Added to library', ar: 'تمت الإضافة إلى المكتبة' },
   toast_removed: { en: 'Removed from library', ar: 'تمت الإزالة من المكتبة' },
   toast_session_saved: { en: 'Session settings saved!', ar: 'تم حفظ إعدادات الجلسة!' },
@@ -66,7 +63,7 @@ export const TRANSLATIONS: TranslationDictionary = {
   tooltip_save_session: { en: 'Save current filters', ar: 'حفظ التصفيات الحالية' },
   loading: { en: 'Loading...', ar: 'جار التحميل...' },
   no_notes: { en: 'No notes found.', ar: 'لا توجد ملاحظات.' },
-  no_notes_desc: { en: 'Try adjusting your search or filters to find what you are looking for.', ar: 'حاول تعديل البحث أو التصفيات للعثور على ما تبحث عنه.' },
+  no_notes_desc: { en: 'Try adjusting your search to find what you are looking for.', ar: 'حاول تعديل البحث للعثور على ما تبحث عنه.' },
   admin_dashboard: { en: 'Admin Dashboard', ar: 'لوحة التحكم' },
   table_date: { en: 'Date', ar: 'التاريخ' },
   table_uploader: { en: 'Uploader', ar: 'الرافع' },
@@ -79,6 +76,7 @@ export const TRANSLATIONS: TranslationDictionary = {
   admin_stats_upvotes: { en: 'Total Upvotes', ar: 'إجمالي الإعجابات' },
   login_title: { en: 'Welcome Back', ar: 'مرحباً بعودتك' },
   login_subtitle: { en: 'Enter your credentials to access your account.', ar: 'أدخل بيانات الاعتماد للوصول إلى حسابك.' },
+  register_subtitle: { en: 'Join the community and start sharing.', ar: 'انضم إلى المجتمع وابدأ المشاركة.' },
   email_label: { en: 'Email Address', ar: 'البريد الإلكتروني' },
   password_label: { en: 'Password', ar: 'كلمة المرور' },
   btn_login: { en: 'Sign In', ar: 'تسجيل الدخول' },
@@ -99,6 +97,9 @@ export const TRANSLATIONS: TranslationDictionary = {
   profile_stats_upvotes: { en: 'Upvotes Received', ar: 'الإعجابات المستلمة' },
   profile_stats_notes: { en: 'Notes Shared', ar: 'الملاحظات المشاركة' },
   profile_member_since: { en: 'Member since', ar: 'عضو منذ' },
+  confirm_delete: { en: 'Are you sure you want to delete this note? This action cannot be undone.', ar: 'هل أنت متأكد أنك تريد حذف هذه الملاحظة؟ لا يمكن التراجع عن هذا الإجراء.' },
+  register_verification_sent: { en: 'Registration successful! Check your email to verify.', ar: 'تم التسجيل! تفقد بريدك لتفعيل الحساب.' },
+  login_error_verify: { en: 'Email not confirmed. Please verify your email.', ar: 'البريد غير مفعل. الرجاء تفعيل بريدك الإلكتروني.' },
 };
 
 export const MOCK_NOTES: Note[] = [];

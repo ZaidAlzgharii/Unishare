@@ -5,7 +5,6 @@ import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { mockDb } from '../services/firebase';
 import { Note } from '../types';
-import { PROGRAMS } from '../constants';
 import Navbar from '../components/Navbar';
 import NoteCard from '../components/NoteCard';
 import NoteCardSkeleton from '../components/NoteCardSkeleton';
@@ -23,13 +22,6 @@ const Home: React.FC = () => {
     try {
       const saved = localStorage.getItem('uniShare_home_session');
       return saved ? JSON.parse(saved).search || '' : '';
-    } catch { return ''; }
-  });
-
-  const [programFilter, setProgramFilter] = useState(() => {
-    try {
-      const saved = localStorage.getItem('uniShare_home_session');
-      return saved ? JSON.parse(saved).programFilter || '' : '';
     } catch { return ''; }
   });
 
@@ -74,7 +66,6 @@ const Home: React.FC = () => {
   const handleSaveSession = () => {
     const sessionData = {
       search,
-      programFilter,
       sortBy,
       activeTab
     };
@@ -107,16 +98,20 @@ const Home: React.FC = () => {
 
   const handleResetFilters = () => {
     setSearch('');
-    setProgramFilter('');
     setSortBy('newest');
     setActiveTab('all');
   };
 
-  // Base filtering for global controls (Search & Major)
+  // Base filtering for global controls (Search)
   const baseNotes = notes.filter(note => {
     if (!note.isApproved) return false;
-    if (programFilter && note.major !== programFilter) return false;
-    if (search && !note.title.toLowerCase().includes(search.toLowerCase()) && !note.major.toLowerCase().includes(search.toLowerCase())) return false;
+    // Search now checks Title AND Major AND Description
+    if (search) {
+       const q = search.toLowerCase();
+       return note.title.toLowerCase().includes(q) || 
+              note.major.toLowerCase().includes(q) ||
+              note.description.toLowerCase().includes(q);
+    }
     return true;
   });
 
@@ -244,19 +239,6 @@ const Home: React.FC = () => {
                 <option value="oldest">{t('sort_date_oldest')}</option>
                 <option value="popular">{t('sort_popular')}</option>
                 <option value="title">{t('sort_title')}</option>
-              </select>
-            </div>
-
-            {/* Filter */}
-            <div className="relative">
-              <Filter className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none ${dir === 'rtl' ? 'right-3' : 'left-3'}`} />
-              <select 
-                value={programFilter}
-                onChange={(e) => setProgramFilter(e.target.value)}
-                className={`appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 text-sm rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent block py-2.5 ${dir === 'rtl' ? 'pr-9 pl-8' : 'pl-9 pr-8'} shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors`}
-              >
-                <option value="">{t('filter_program')} (All)</option>
-                {PROGRAMS.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
               </select>
             </div>
           </div>

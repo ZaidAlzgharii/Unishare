@@ -6,7 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 import { mockDb } from '../services/firebase';
 import { Note } from '../types';
 import Navbar from '../components/Navbar';
-import { Check, X, Trash2, ArrowUpRight, ArrowUpDown, FileText, Clock, CheckCircle2, ThumbsUp } from 'lucide-react';
+import { Check, X, Trash2, ArrowUpRight, ArrowUpDown, FileText, Clock, CheckCircle2, ThumbsUp, AlertTriangle } from 'lucide-react';
 import PreviewModal from '../components/PreviewModal';
 
 const AdminPanel: React.FC = () => {
@@ -20,6 +20,10 @@ const AdminPanel: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved'>('all');
   const [sortBy, setSortBy] = useState<'date_newest' | 'date_oldest' | 'title' | 'uploader'>('date_newest');
   const [previewNote, setPreviewNote] = useState<Note | null>(null);
+  
+  // Modal State
+  const [confirmAction, setConfirmAction] = useState<{ type: 'approve' | 'reject' | 'delete', id: string } | null>(null);
+  const [processing, setProcessing] = useState(false);
 
   // Protected Route Check
   useEffect(() => {
@@ -43,16 +47,44 @@ const AdminPanel: React.FC = () => {
     fetchNotes();
   }, []);
 
-  const handleAction = async (action: 'approve' | 'reject' | 'delete', id: string) => {
+  const initiateAction = (action: 'approve' | 'reject' | 'delete', id: string) => {
+      if (action === 'approve') {
+          // Approve doesn't need confirmation usually, but consistent handling is fine.
+          // For speed, let's just do it directly or via execute.
+          // Let's execute approve directly to keep it snappy.
+          executeAction('approve', id);
+      } else {
+          // Delete and Reject need confirmation
+          setConfirmAction({ type: action, id });
+      }
+  };
+
+  const executeAction = async (action: 'approve' | 'reject' | 'delete', id: string) => {
+    setProcessing(true);
+    // Optimistic Update Snapshot
+    const prevNotes = [...notes];
+
+    // Optimistic Update
+    if (action === 'delete' || action === 'reject') {
+        setNotes(prev => prev.filter(n => n.id !== id));
+    } else {
+        setNotes(prev => prev.map(n => n.id === id ? { ...n, isApproved: true } : n));
+    }
+    
+    // Close modal if open
+    setConfirmAction(null);
+
     try {
       if (action === 'approve') await mockDb.approveNote(id);
       if (action === 'reject') await mockDb.rejectNote(id);
       if (action === 'delete') await mockDb.deleteNote(id);
       
-      addToast(action === 'delete' ? t('toast_delete_success') : t('toast_approve_success'), 'success');
-      fetchNotes();
+      addToast(action === 'delete' || action === 'reject' ? t('toast_delete_success') : t('toast_approve_success'), 'success');
     } catch (e) {
       addToast('Operation failed', 'error');
+      setNotes(prevNotes); // Revert
+    } finally {
+        setProcessing(false);
     }
   };
 
@@ -210,14 +242,14 @@ const AdminPanel: React.FC = () => {
                            {!note.isApproved && (
                              <>
                                <button 
-                                 onClick={() => handleAction('approve', note.id)} 
+                                 onClick={() => initiateAction('approve', note.id)} 
                                  className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition"
                                  title="Approve"
                                >
                                  <Check className="w-4 h-4" />
                                </button>
                                <button 
-                                 onClick={() => handleAction('reject', note.id)}
+                                 onClick={() => initiateAction('reject', note.id)}
                                  className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
                                  title="Reject"
                                >
@@ -229,7 +261,7 @@ const AdminPanel: React.FC = () => {
                            {/* Admins AND Owners can now delete any note */}
                            {(user.role === 'owner' || user.role === 'admin') && (
                              <button 
-                               onClick={() => handleAction('delete', note.id)}
+                               onClick={() => initiateAction('delete', note.id)}
                                className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
                                title="Delete"
                              >
@@ -249,6 +281,43 @@ const AdminPanel: React.FC = () => {
 
       {previewNote && (
         <PreviewModal note={previewNote} onClose={() => setPreviewNote(null)} />
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-800 p-6" dir={dir}>
+                <div className="flex items-center gap-3 mb-4 text-amber-600 dark:text-amber-400">
+                    <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                        <AlertTriangle className="w-6 h-6" />
+                    </div>
+                    <h3 className="font-bold text-lg text-slate-900 dark:text-white">
+                         {t('confirm_action_title')}
+                    </h3>
+                </div>
+                
+                <p className="text-slate-600 dark:text-slate-300 mb-6 text-sm leading-relaxed">
+                    {t('confirm_delete')}
+                </p>
+                
+                <div className="flex gap-3">
+                    <button 
+                        disabled={processing}
+                        onClick={() => setConfirmAction(null)}
+                        className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                    >
+                        {t('modal_close')}
+                    </button>
+                    <button 
+                        disabled={processing}
+                        onClick={() => executeAction(confirmAction.type, confirmAction.id)}
+                        className={`flex-1 py-2.5 font-bold rounded-xl shadow-lg transition text-white ${confirmAction.type === 'delete' || confirmAction.type === 'reject' ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' : 'bg-primary-600 hover:bg-primary-700 shadow-primary-500/20'}`}
+                    >
+                        {processing ? '...' : t('btn_confirm')}
+                    </button>
+                </div>
+            </div>
+        </div>
       )}
     </div>
   );

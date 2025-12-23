@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Note } from '../types';
-import { FileText, Image as ImageIcon, File, Eye, Download, Bookmark, ThumbsUp, Check, X as XIcon, ShieldCheck } from 'lucide-react';
+import { FileText, Image as ImageIcon, File, Eye, Download, Bookmark, ThumbsUp, Check, X as XIcon, ShieldCheck, Flag, AlertTriangle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { mockDb } from '../services/firebase';
@@ -15,12 +15,18 @@ interface NoteCardProps {
 }
 
 const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSave }) => {
-  const { t } = useLanguage();
+  const { t, dir } = useLanguage();
   const { user } = useAuth();
   const { addToast } = useToast();
+  
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
   const [localUpvotes, setLocalUpvotes] = useState(note.upvotes);
+  
+  // Report State
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('Spam');
+  const [reporting, setReporting] = useState(false);
 
   const getIcon = () => {
     switch (note.fileType) {
@@ -57,6 +63,21 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
     e.stopPropagation();
     const newCount = await mockDb.toggleUpvote(note.id);
     setLocalUpvotes(newCount);
+  };
+
+  const handleReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setReporting(true);
+    try {
+        await mockDb.reportNote(note.id, user.id, reportReason);
+        addToast(t('toast_report_success'), 'success');
+        setIsReportOpen(false);
+    } catch (error) {
+        addToast('Failed to submit report', 'error');
+    } finally {
+        setReporting(false);
+    }
   };
 
   const showAdminControls = (user?.role === 'admin' || user?.role === 'owner') && !note.isApproved;
@@ -135,6 +156,16 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
               <ThumbsUp className="w-4 h-4" />
               <span className="text-xs font-bold">{localUpvotes}</span>
             </button>
+            {/* Report Button */}
+            {user && (
+                <button 
+                    onClick={() => setIsReportOpen(true)}
+                    className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition p-2 rounded-lg ml-1"
+                    title={t('btn_report')}
+                >
+                    <Flag className="w-4 h-4" />
+                </button>
+            )}
           </div>
 
           {showAdminControls ? (
@@ -167,6 +198,64 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
 
       {isPreviewOpen && (
         <PreviewModal note={note} onClose={() => setIsPreviewOpen(false)} />
+      )}
+
+      {/* Report Modal */}
+      {isReportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-800 p-6" dir={dir}>
+                <div className="flex items-center gap-3 mb-4 text-amber-600 dark:text-amber-400">
+                    <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                        <AlertTriangle className="w-6 h-6" />
+                    </div>
+                    <h3 className="font-bold text-lg text-slate-900 dark:text-white">{t('report_modal_title')}</h3>
+                </div>
+                
+                <form onSubmit={handleReport}>
+                    <div className="space-y-3 mb-6">
+                        {['Spam or Misleading', 'Inappropriate Content', 'Wrong Category/Major', 'Other'].map((reason) => {
+                             // Simple mapper for translation keys
+                             const keyMap: {[key: string]: string} = {
+                                 'Spam or Misleading': 'report_reason_spam',
+                                 'Inappropriate Content': 'report_reason_inappropriate',
+                                 'Wrong Category/Major': 'report_reason_wrong_category',
+                                 'Other': 'report_reason_other'
+                             };
+                             return (
+                                <label key={reason} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                                    <input 
+                                        type="radio" 
+                                        name="reportReason" 
+                                        value={reason} 
+                                        checked={reportReason === reason}
+                                        onChange={(e) => setReportReason(e.target.value)}
+                                        className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                                    />
+                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t(keyMap[reason])}</span>
+                                </label>
+                             );
+                        })}
+                    </div>
+                    
+                    <div className="flex gap-3">
+                        <button 
+                            type="button" 
+                            onClick={() => setIsReportOpen(false)}
+                            className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                        >
+                            {t('modal_close')}
+                        </button>
+                        <button 
+                            type="submit"
+                            disabled={reporting} 
+                            className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-500/20 transition disabled:opacity-70"
+                        >
+                            {reporting ? '...' : t('btn_submit_report')}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
       )}
     </>
   );
