@@ -60,12 +60,12 @@ const Login: React.FC = () => {
 
     try {
       if (view === 'register') {
-        const result = await register(name, email, password, 'student');
+        const result = await register(name.trim(), email.trim(), password.trim(), 'student');
         if (result.success) {
             if (result.emailConfirmationRequired) {
                 // If email verification is required, switch to verify view
                 addToast(t('register_verification_sent'), 'success');
-                setPendingEmail(email);
+                setPendingEmail(email.trim());
                 setView('verify');
                 setResendTimer(60); // Start timer immediately on success
             } else {
@@ -78,7 +78,7 @@ const Login: React.FC = () => {
       } 
       else if (view === 'verify') {
         // Verify OTP
-        const result = await verifyEmail(pendingEmail, otp);
+        const result = await verifyEmail(pendingEmail.trim(), otp.trim());
         if (result.success) {
             addToast(t('toast_welcome'), 'success');
             navigate('/');
@@ -88,7 +88,7 @@ const Login: React.FC = () => {
       }
       else {
         // Standard Login
-        const result = await login(email, password);
+        const result = await login(email.trim(), password.trim());
         if (result.success) {
           addToast(t('toast_welcome'), 'success');
           navigate('/');
@@ -97,7 +97,7 @@ const Login: React.FC = () => {
           const msg = result.message?.toLowerCase() || '';
           if (msg.includes('email not confirmed')) {
              addToast(t('login_error_verify'), 'error');
-             setPendingEmail(email);
+             setPendingEmail(email.trim());
              setView('verify');
              setResendTimer(0); // Allow immediate resend if they came from login failure
           } else {

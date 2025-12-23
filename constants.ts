@@ -100,6 +100,14 @@ export const TRANSLATIONS: TranslationDictionary = {
   confirm_delete: { en: 'Are you sure you want to delete this note? This action cannot be undone.', ar: 'هل أنت متأكد أنك تريد حذف هذه الملاحظة؟ لا يمكن التراجع عن هذا الإجراء.' },
   register_verification_sent: { en: 'Registration successful! Check your email to verify.', ar: 'تم التسجيل! تفقد بريدك لتفعيل الحساب.' },
   login_error_verify: { en: 'Email not confirmed. Please verify your email.', ar: 'البريد غير مفعل. الرجاء تفعيل بريدك الإلكتروني.' },
+  
+  // New Admin Reports
+  admin_stats_reports: { en: 'Reports', ar: 'البلاغات' },
+  tab_reported: { en: 'Reported', ar: 'المبلغ عنها' },
+  table_reason: { en: 'Reason', ar: 'السبب' },
+  table_reporter: { en: 'Reported By', ar: 'أبلغ عنه' },
+  btn_dismiss: { en: 'Dismiss', ar: 'تجاهل' },
+  toast_report_dismissed: { en: 'Report dismissed.', ar: 'تم تجاهل البلاغ.' },
 };
 
 export const MOCK_NOTES: Note[] = [];

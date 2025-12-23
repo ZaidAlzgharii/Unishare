@@ -35,6 +35,17 @@ export interface Comment {
   date: string;
 }
 
+export interface Report {
+  id: string;
+  noteId: string;
+  noteTitle: string;
+  reporterId: string;
+  reporterName: string;
+  reason: string;
+  date: string;
+  note?: Note; // Optional full note object for preview
+}
+
 export interface Program {
   name: string;
   courses?: string[]; // Made optional as courses are being phased out

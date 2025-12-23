@@ -92,8 +92,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, pass: string): Promise<{ success: boolean; message?: string }> => {
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password: pass,
+      email: email.trim(),
+      password: pass.trim(),
     });
     
     if (error) {
@@ -109,11 +109,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
         // 1. Sign up auth user with metadata
         const { data, error } = await supabase.auth.signUp({
-          email,
-          password: pass,
+          email: email.trim(),
+          password: pass.trim(),
           options: {
             data: {
-              name: name,
+              name: name.trim(),
               role: role,
               avatar_url: `https://api.dicebear.com/9.x/avataaars/svg?seed=${name.replace(' ', '')}`
             }
@@ -155,8 +155,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const verifyEmail = async (email: string, token: string): Promise<{ success: boolean; message?: string }> => {
     try {
       const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token,
+        email: email.trim(),
+        token: token.trim(),
         type: 'signup'
       });
 
@@ -180,7 +180,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email: email,
+        email: email.trim(),
       });
 
       if (error) {

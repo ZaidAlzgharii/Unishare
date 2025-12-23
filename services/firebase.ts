@@ -1,4 +1,4 @@
-import { Note, Comment, User } from '../types';
+import { Note, Comment, User, Report } from '../types';
 import { GoogleGenAI } from "@google/genai";
 import { supabase } from './supabaseClient';
 
@@ -169,6 +169,61 @@ export const mockDb = {
       reason: reason
     });
     if (error) throw error;
+  },
+
+  getReports: async (): Promise<Report[]> => {
+      const { data, error } = await supabase
+        .from('reports')
+        .select(`
+            id,
+            reason,
+            created_at,
+            reporter:profiles!reporter_id (name, id),
+            note:notes!note_id (*)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+          console.error("Error fetching reports", error);
+          return [];
+      }
+
+      // Format to Report Interface
+      return data.map((r: any) => {
+          // Reconstruct Note object if present
+          let noteObj: Note | undefined = undefined;
+          if (r.note) {
+               noteObj = {
+                  id: r.note.id,
+                  title: r.note.title,
+                  description: r.note.description,
+                  major: r.note.major,
+                  category: r.note.category,
+                  uploaderId: r.note.uploader_id,
+                  uploaderName: 'Unknown', // Not joined here to keep it simple, reports focus on reason
+                  date: r.note.date,
+                  fileUrl: r.note.file_url,
+                  fileType: r.note.file_type as any,
+                  isApproved: r.note.is_approved,
+                  upvotes: 0 
+               };
+          }
+
+          return {
+              id: r.id,
+              noteId: r.note?.id || 'deleted',
+              noteTitle: r.note?.title || 'Deleted Note',
+              reporterId: r.reporter?.id,
+              reporterName: r.reporter?.name || 'Unknown',
+              reason: r.reason,
+              date: r.created_at,
+              note: noteObj
+          };
+      });
+  },
+
+  deleteReport: async (id: string): Promise<void> => {
+      await supabase.from('reports').delete().eq('id', id);
   },
 
   // --- AI ---
