@@ -23,8 +23,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   // Helper to fetch user profile details after auth state changes
-  const fetchProfile = async (userId: string, email: string) => {
+  const fetchProfile = async (userId: string, email: string, createdAt?: string) => {
     try {
+      let joinedAt = createdAt;
+      
+      // If we don't have createdAt passed in, fetch it from auth API
+      if (!joinedAt) {
+          const { data: { user } } = await supabase.auth.getUser();
+          joinedAt = user?.created_at;
+      }
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -36,7 +44,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           id: userId,
           name: data.name,
           role: data.role as UserRole,
-          avatar: data.avatar_url || ''
+          avatar: data.avatar_url || '',
+          joinedAt: joinedAt
         });
       } else {
         // Fallback: If profile row is missing (trigger delay), check Auth Metadata
@@ -48,7 +57,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             id: userId,
             name: metaName,
             role: metaRole,
-            avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${metaName.replace(' ', '')}`
+            avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${metaName.replace(' ', '')}`,
+            joinedAt: joinedAt
         });
       }
     } catch (e) {
@@ -60,7 +70,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        fetchProfile(session.user.id, session.user.email!);
+        fetchProfile(session.user.id, session.user.email!, session.user.created_at);
       } else {
         setLoading(false);
       }
@@ -68,7 +78,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        fetchProfile(session.user.id, session.user.email!);
+        fetchProfile(session.user.id, session.user.email!, session.user.created_at);
       } else {
         setUser(null);
       }
@@ -126,7 +136,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 id: data.user.id,
                 name,
                 role,
-                avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${name.replace(' ', '')}`
+                avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${name.replace(' ', '')}`,
+                joinedAt: data.user.created_at
             });
             return { success: true, emailConfirmationRequired: false };
         }

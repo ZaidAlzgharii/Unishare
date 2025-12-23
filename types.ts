@@ -5,6 +5,7 @@ export interface User {
   name: string;
   role: UserRole;
   avatar: string;
+  joinedAt?: string; // ISO String for registration date
 }
 
 export type NoteType = 'pdf' | 'image' | 'docx' | 'other';

@@ -85,7 +85,7 @@ const Profile: React.FC = () => {
                       </span>
                       <span className="flex items-center gap-1.5 text-sm">
                           <Calendar className="w-4 h-4" />
-                          {t('profile_member_since')} 2023
+                          {t('profile_member_since')} {user.joinedAt ? new Date(user.joinedAt).getFullYear() : new Date().getFullYear()}
                       </span>
                   </div>
 
