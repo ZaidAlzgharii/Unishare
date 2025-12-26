@@ -35,6 +35,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           joinedAt = user?.created_at;
       }
 
+      // Generate a consistent default avatar based on email/name seed
+      const seed = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
+      const defaultAvatar = `https://api.dicebear.com/9.x/avataaars/svg?seed=${seed}`;
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -44,10 +48,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (data) {
         setUser({
           id: userId,
-          name: data.name,
-          role: data.role as UserRole,
-          avatar: data.avatar_url || '',
-          joinedAt: joinedAt
+          name: data.name || email.split('@')[0],
+          role: (data.role as UserRole) || 'student',
+          // Ensure we always have an avatar, falling back to generated one if DB is null/empty
+          avatar: data.avatar_url || defaultAvatar,
+          joinedAt: joinedAt || new Date().toISOString()
         });
       } else {
         // Fallback: If profile row is missing (trigger delay), check Auth Metadata
@@ -59,12 +64,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             id: userId,
             name: metaName,
             role: metaRole,
-            avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${metaName.replace(' ', '')}`,
-            joinedAt: joinedAt
+            avatar: defaultAvatar,
+            joinedAt: joinedAt || new Date().toISOString()
         });
       }
     } catch (e) {
       console.error("Error fetching profile", e);
+      // Fallback to minimal user state on error to prevent infinite loading
+      setUser({
+          id: userId,
+          name: email.split('@')[0],
+          role: 'student',
+          avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${email.split('@')[0]}`,
+          joinedAt: createdAt || new Date().toISOString()
+      });
     }
   };
 
@@ -80,7 +93,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        fetchProfile(session.user.id, session.user.email!, session.user.created_at);
+        // Only fetch if we don't have a user or if the ID changed
+        if (!user || user.id !== session.user.id) {
+            fetchProfile(session.user.id, session.user.email!, session.user.created_at);
+        }
       } else {
         setUser(null);
       }
@@ -107,15 +123,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const register = async (name: string, email: string, pass: string, role: UserRole): Promise<RegisterResult> => {
     try {
+        const cleanName = name.trim();
+        const defaultAvatar = `https://api.dicebear.com/9.x/avataaars/svg?seed=${cleanName.replace(/[^a-zA-Z0-9]/g, '')}`;
+
         // 1. Sign up auth user with metadata
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password: pass.trim(),
           options: {
             data: {
-              name: name.trim(),
+              name: cleanName,
               role: role,
-              avatar_url: `https://api.dicebear.com/9.x/avataaars/svg?seed=${name.replace(' ', '')}`
+              avatar_url: defaultAvatar
             }
           }
         });
@@ -138,10 +157,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (data.user && data.session) {
             setUser({
                 id: data.user.id,
-                name,
+                name: cleanName,
                 role,
-                avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${name.replace(' ', '')}`,
-                joinedAt: data.user.created_at
+                avatar: defaultAvatar,
+                joinedAt: data.user.created_at || new Date().toISOString()
             });
             return { success: true, emailConfirmationRequired: false };
         }

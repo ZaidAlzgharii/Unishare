@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Note } from '../types';
-import { FileText, Image as ImageIcon, File, Eye, Download, Bookmark, ThumbsUp, Check, X as XIcon, ShieldCheck, Flag, AlertTriangle } from 'lucide-react';
+import { FileText, Image as ImageIcon, File, Eye, Download, Bookmark, ThumbsUp, Check, X as XIcon, ShieldCheck, Flag, AlertTriangle, Share2 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { mockDb } from '../services/firebase';
@@ -25,7 +25,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
   
   // Report State
   const [isReportOpen, setIsReportOpen] = useState(false);
-  const [reportReason, setReportReason] = useState('Spam');
+  const [reportReason, setReportReason] = useState('Spam or Misleading');
   const [reporting, setReporting] = useState(false);
 
   const getIcon = () => {
@@ -65,16 +65,46 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
     setLocalUpvotes(newCount);
   };
 
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+        if (navigator.share) {
+            await navigator.share({
+                title: note.title,
+                text: note.description,
+                url: note.fileUrl
+            });
+        } else {
+            await navigator.clipboard.writeText(note.fileUrl);
+            addToast('Link copied to clipboard', 'success');
+        }
+    } catch (err) {
+        console.error('Share failed:', err);
+    }
+  };
+
   const handleReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setReporting(true);
+    
+    // Map full text to simple codes for database consistency
+    const reasonCode = {
+        'Spam or Misleading': 'spam',
+        'Inappropriate Content': 'inappropriate',
+        'Wrong Category/Major': 'wrong_category',
+        'Other': 'other'
+    }[reportReason] || 'other';
+
     try {
-        await mockDb.reportNote(note.id, user.id, reportReason);
+        await mockDb.reportNote(note.id, user.id, reasonCode);
         addToast(t('toast_report_success'), 'success');
         setIsReportOpen(false);
-    } catch (error) {
-        addToast('Failed to submit report', 'error');
+    } catch (error: any) {
+        console.error("Report submission failed:", error);
+        // Ensure we pass a string to addToast, preventing [object Object] errors
+        const msg = error?.message || (typeof error === 'string' ? error : 'Failed to submit report');
+        addToast(msg, 'error');
     } finally {
         setReporting(false);
     }
@@ -148,6 +178,13 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
                 title="Save"
             >
               <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+            </button>
+            <button 
+                onClick={handleShare}
+                className="text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-white dark:hover:bg-slate-700 transition p-2 rounded-lg"
+                title={t('btn_share')}
+            >
+              <Share2 className="w-4 h-4" />
             </button>
             <button 
                 onClick={handleUpvote}
@@ -246,8 +283,8 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
                             {t('modal_close')}
                         </button>
                         <button 
-                            type="submit"
-                            disabled={reporting} 
+                            type="submit" 
+                            disabled={reporting}
                             className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-500/20 transition disabled:opacity-70"
                         >
                             {reporting ? '...' : t('btn_submit_report')}

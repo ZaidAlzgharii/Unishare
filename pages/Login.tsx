@@ -263,21 +263,23 @@ const Login: React.FC = () => {
                         </div>
                     </>
                 )}
-
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-4 bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-xl font-bold text-lg shadow-xl shadow-primary-500/20 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 active:scale-95"
-                >
-                    {loading && view !== 'verify' ? ( // Don't show generic loader if resending in verify view
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                    ) : (
-                    <>
-                        {view === 'register' ? t('btn_register') : view === 'verify' ? 'Verify Email' : t('btn_login')}
-                        <ArrowRight className="w-5 h-5" />
-                    </>
-                    )}
-                </button>
+                
+                <div className="space-y-3">
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-4 bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-xl font-bold text-lg shadow-xl shadow-primary-500/20 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 active:scale-95"
+                    >
+                        {loading && view !== 'verify' ? ( 
+                            <Loader2 className="w-6 h-6 animate-spin" />
+                        ) : (
+                        <>
+                            {view === 'register' ? t('btn_register') : view === 'verify' ? 'Verify Email' : t('btn_login')}
+                            <ArrowRight className="w-5 h-5" />
+                        </>
+                        )}
+                    </button>
+                </div>
             </form>
 
             <div className="mt-8 text-center space-y-4">

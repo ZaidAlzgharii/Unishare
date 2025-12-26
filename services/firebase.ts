@@ -168,19 +168,19 @@ export const mockDb = {
       reporter_id: userId,
       reason: reason
     });
-    if (error) throw error;
+    if (error) {
+        // Log the full error object for debugging (Supabase error objects don't always stringify well in Alerts)
+        console.error("Supabase Report Insert Error:", JSON.stringify(error, null, 2));
+        // Throw a new Error with the message so it can be caught and displayed properly in the UI
+        throw new Error(error.message || "Database insert failed");
+    }
   },
 
   getReports: async (): Promise<Report[]> => {
-      const { data, error } = await supabase
+      // Fetch raw reports without joins first to avoid FK errors
+      const { data: reports, error } = await supabase
         .from('reports')
-        .select(`
-            id,
-            reason,
-            created_at,
-            reporter:profiles!reporter_id (name, id),
-            note:notes!note_id (*)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -188,33 +188,57 @@ export const mockDb = {
           return [];
       }
 
-      // Format to Report Interface
-      return data.map((r: any) => {
-          // Reconstruct Note object if present
+      if (!reports || reports.length === 0) return [];
+
+      // Extract unique IDs for bulk fetching
+      const reporterIds = [...new Set(reports.map((r: any) => r.reporter_id).filter(Boolean))];
+      const noteIds = [...new Set(reports.map((r: any) => r.note_id).filter(Boolean))];
+
+      // Fetch Profiles (Reporters)
+      const { data: reporters } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .in('id', reporterIds);
+      
+      const reporterMap = new Map(reporters?.map((p: any) => [p.id, p.name]) || []);
+
+      // Fetch Notes
+      const { data: notes } = await supabase
+        .from('notes')
+        .select('*')
+        .in('id', noteIds);
+
+      // Explicitly type the map to ensure values are treated as 'any' instead of 'unknown'
+      const noteMap = new Map<string, any>(notes?.map((n: any) => [n.id, n]) || []);
+
+      // Map everything together
+      return reports.map((r: any) => {
+          const noteData = noteMap.get(r.note_id);
           let noteObj: Note | undefined = undefined;
-          if (r.note) {
+          
+          if (noteData) {
                noteObj = {
-                  id: r.note.id,
-                  title: r.note.title,
-                  description: r.note.description,
-                  major: r.note.major,
-                  category: r.note.category,
-                  uploaderId: r.note.uploader_id,
-                  uploaderName: 'Unknown', // Not joined here to keep it simple, reports focus on reason
-                  date: r.note.date,
-                  fileUrl: r.note.file_url,
-                  fileType: r.note.file_type as any,
-                  isApproved: r.note.is_approved,
+                  id: noteData.id,
+                  title: noteData.title,
+                  description: noteData.description,
+                  major: noteData.major,
+                  category: noteData.category,
+                  uploaderId: noteData.uploader_id,
+                  uploaderName: 'Unknown', // Simplified for report context
+                  date: noteData.date,
+                  fileUrl: noteData.file_url,
+                  fileType: noteData.file_type as any,
+                  isApproved: noteData.is_approved,
                   upvotes: 0 
                };
           }
 
           return {
               id: r.id,
-              noteId: r.note?.id || 'deleted',
-              noteTitle: r.note?.title || 'Deleted Note',
-              reporterId: r.reporter?.id,
-              reporterName: r.reporter?.name || 'Unknown',
+              noteId: r.note_id,
+              noteTitle: noteData?.title || 'Deleted Note',
+              reporterId: r.reporter_id,
+              reporterName: reporterMap.get(r.reporter_id) || 'Unknown',
               reason: r.reason,
               date: r.created_at,
               note: noteObj
@@ -228,14 +252,19 @@ export const mockDb = {
 
   // --- AI ---
 
-  generateAiSummary: async (noteId: string): Promise<string> => {
+  generateAiContent: async (
+    noteId: string, 
+    taskType: 'SUMMARY' | 'QUIZ' | 'ROADMAP' | 'TAGS' | 'EXPLAIN',
+    userQuery?: string,
+    language: 'ar' | 'en' = 'ar'
+  ): Promise<string> => {
     // 1. Get note details for URL
     const { data: note } = await supabase.from('notes').select('file_url, file_type').eq('id', noteId).single();
     if (!note) return "Error: Note not found.";
 
     // API Key must be accessed directly via process.env.API_KEY
     if (!process.env.API_KEY) {
-      return "AI Summary is unavailable (API Key missing). Please configure the API Key.";
+      return "AI Service is unavailable (API Key missing). Please configure the API Key.";
     }
 
     try {
@@ -256,20 +285,93 @@ export const mockDb = {
         reader.readAsDataURL(blob);
       });
 
-      const prompt = `Act as an expert academic analyst. Analyze the ATTACHED FILE and provide a professional, bilingual summary (ENGLISH and ARABIC).
-      
-      Structure:
-      1. **Core Concept / الفكرة الأساسية**
-      2. **Key Insights / أبرز النقاط** (Bulleted)
-      3. **Important Terminology / المصطلحات الهامة**
+      // Construct Task Specific Instructions
+      let taskInstructions = '';
+      switch(taskType) {
+        case 'SUMMARY':
+          taskInstructions = `
+            Task: SUMMARY
+            - Read the entire text or file.
+            - Extract the top 5-7 key ideas.
+            - Present the summary in clear bullet points.
+            - Use academic yet accessible language.
+            - Conclude with a "Golden Tip" for mastering this topic.`;
+          break;
+        case 'QUIZ':
+          taskInstructions = `
+            Task: QUIZ
+            - Generate 5 Multiple Choice Questions (MCQ) based on the text.
+            - Provide 4 options (A, B, C, D) for each question.
+            - **IMPORTANT:** Do NOT show the correct answer after each question.
+            - **IMPORTANT:** Place all correct answers and explanations in a separate "Answer Key" section at the very bottom of the response.
+            - Required Format:
+              **Q1: [Question Text]**
+              - A) [Option]
+              - B) [Option]
+              - C) [Option]
+              - D) [Option]
+              
+              ... (Repeat for all questions) ...
+              
+              ---
+              ### 🔑 Answer Key
+              1. **[Correct Letter]** - [Brief Explanation]
+              2. **[Correct Letter]** - [Brief Explanation]
+              ...`;
+          break;
+        case 'ROADMAP':
+          taskInstructions = `
+            Task: ROADMAP
+            - The user wants to learn the topic in the text from scratch.
+            - Break the topic down into a structured study plan (divided by weeks or days).
+            - Order topics from easiest to hardest.
+            - Suggest specific YouTube search titles for each section.`;
+          break;
+        case 'TAGS':
+          taskInstructions = `
+            Task: TAGS
+            - Extract the top 5 keywords that describe the file to facilitate future searching.
+            - Separate keywords with commas only.`;
+          break;
+        case 'EXPLAIN':
+          // Enhanced logic to handle greetings vs actual questions
+          taskInstructions = `
+            Task: CONVERSATIONAL AGENT / TUTOR
+            - You have access to the file provided by the student.
+            - User's Input: "${userQuery}"
 
-      Keep it strictly based on the file content.`;
+            **LOGIC FLOW:**
+            1. **Is the input a Greeting?** (e.g., "Hi", "Hello", "Salam", "Hey", "How are you?"):
+               - **ACTION:** Reply naturally and politely (e.g., "Hello! I've analyzed the document. What specific part would you like me to explain?"). 
+               - **CONSTRAINT:** Do NOT summarize the document yet. Do NOT give a long lecture. Keep it brief and welcoming.
+
+            2. **Is the input a Specific Question?**:
+               - **ACTION:** Answer the question using evidence *strictly* from the document.
+               - **TONE:** Act like a patient university professor. Use examples if helpful.
+
+            3. **Is the input generic (e.g., "Explain", "Analyze")?**:
+               - **ACTION:** Provide a high-level summary/explanation of the document's core concepts.
+          `;
+          break;
+      }
+
+      // Persona and General Rules
+      const systemPrompt = `
+      You are "UniShare AI," an intelligent academic assistant for university students on the UniShare platform. 
+      Your mission is to assist students with their studies based on the content they provide.
+      
+      ${taskInstructions}
+
+      General Rules:
+      - **Language:** The output MUST be in **${language === 'ar' ? 'Modern Standard Arabic' : 'English'}**.
+      - **Formatting:** Use Markdown (Headings with ##, Bold with **) to ensure the text is easily readable on the app.
+      `;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: {
           parts: [
-            { text: prompt },
+            { text: systemPrompt },
             {
               inlineData: {
                 mimeType: blob.type || (note.file_type === 'pdf' ? 'application/pdf' : 'image/jpeg'),

@@ -7,9 +7,10 @@ import { Send, MessageSquare } from 'lucide-react';
 
 interface CommentSectionProps {
   noteId: string;
+  className?: string;
 }
 
-const CommentSection: React.FC<CommentSectionProps> = ({ noteId }) => {
+const CommentSection: React.FC<CommentSectionProps> = ({ noteId, className = '' }) => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [comments, setComments] = useState<Comment[]>([]);
@@ -46,7 +47,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ noteId }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 w-full md:w-80 lg:w-96 flex-shrink-0 transition-colors">
+    <div className={`flex flex-col h-full bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 transition-colors ${className}`}>
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 bg-white dark:bg-slate-900 sticky top-0 z-10">
         <MessageSquare className="w-5 h-5 text-primary-500" />
         <h3 className="font-bold text-slate-900 dark:text-white">{t('comments_title')} <span className="text-sm font-normal text-slate-500">({comments.length})</span></h3>
