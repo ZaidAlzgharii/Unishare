@@ -324,7 +324,7 @@ export const mockDb = {
           taskInstructions = `
             Task: TAGS
             - Extract the top 5 keywords that describe the file to facilitate future searching.
-            - Separate keywords with commas only. Do not add any other text.`;
+            - Separate keywords with commas only. Do not add any other text (e.g., "Tags:").`;
           break;
         case 'EXPLAIN':
           // Enhanced logic to handle greetings vs actual questions
