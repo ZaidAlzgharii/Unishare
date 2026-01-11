@@ -114,6 +114,7 @@ export const TRANSLATIONS: TranslationDictionary = {
   table_reporter: { en: 'Reported By', ar: 'أبلغ عنه' },
   btn_dismiss: { en: 'Dismiss', ar: 'تجاهل' },
   toast_report_dismissed: { en: 'Report dismissed.', ar: 'تم تجاهل البلاغ.' },
+  ai_greeting: { en: 'Hello! I have analyzed the document. What specific part would you like me to explain?', ar: 'مرحباً! لقد قمت بتحليل المستند. ما الجزء المحدد الذي تود مني شرحه؟' },
 };
 
 export const MOCK_NOTES: Note[] = [];

@@ -71,10 +71,13 @@ export const mockDb = {
     if (!note.file) throw new Error("No file provided");
 
     // 1. Upload File to Storage
-    // Sanitize filename to prevent issues
-    const fileExt = note.file.name.split('.').pop();
-    const cleanFileName = note.file.name.replace(/[^a-zA-Z0-9]/g, '_');
-    const fileName = `${Date.now()}_${cleanFileName}.${fileExt}`;
+    // Sanitize filename to prevent issues with special characters in URLs
+    const nameParts = note.file.name.split('.');
+    const ext = nameParts.length > 1 ? nameParts.pop() : '';
+    const nameBase = nameParts.join('.');
+    // Only allow alphanumeric, underscores and hyphens
+    const cleanFileName = nameBase.replace(/[^a-zA-Z0-9-_]/g, '_');
+    const fileName = `${Date.now()}_${cleanFileName}${ext ? '.' + ext : ''}`;
     const filePath = `${fileName}`;
 
     const { error: uploadError } = await supabase.storage
@@ -301,23 +304,13 @@ export const mockDb = {
           taskInstructions = `
             Task: QUIZ
             - Generate 5 Multiple Choice Questions (MCQ) based on the text.
-            - Provide 4 options (A, B, C, D) for each question.
-            - **IMPORTANT:** Do NOT show the correct answer after each question.
-            - **IMPORTANT:** Place all correct answers and explanations in a separate "Answer Key" section at the very bottom of the response.
-            - Required Format:
-              **Q1: [Question Text]**
-              - A) [Option]
-              - B) [Option]
-              - C) [Option]
-              - D) [Option]
-              
-              ... (Repeat for all questions) ...
-              
-              ---
-              ### 🔑 Answer Key
-              1. **[Correct Letter]** - [Brief Explanation]
-              2. **[Correct Letter]** - [Brief Explanation]
-              ...`;
+            - Output must be a pure JSON Array. Do NOT wrap in markdown code blocks.
+            - Each object must have:
+              - "question": string
+              - "options": array of 4 strings
+              - "correctAnswer": number (index 0-3)
+              - "explanation": string (why the answer is correct)
+            `;
           break;
         case 'ROADMAP':
           taskInstructions = `
@@ -331,7 +324,7 @@ export const mockDb = {
           taskInstructions = `
             Task: TAGS
             - Extract the top 5 keywords that describe the file to facilitate future searching.
-            - Separate keywords with commas only.`;
+            - Separate keywords with commas only. Do not add any other text.`;
           break;
         case 'EXPLAIN':
           // Enhanced logic to handle greetings vs actual questions
@@ -342,8 +335,8 @@ export const mockDb = {
 
             **LOGIC FLOW:**
             1. **Is the input a Greeting?** (e.g., "Hi", "Hello", "Salam", "Hey", "How are you?"):
-               - **ACTION:** Reply naturally and politely (e.g., "Hello! I've analyzed the document. What specific part would you like me to explain?"). 
-               - **CONSTRAINT:** Do NOT summarize the document yet. Do NOT give a long lecture. Keep it brief and welcoming.
+               - **ACTION:** Reply naturally and politely. 
+               - **CONSTRAINT:** Do NOT summarize the document yet. Keep it brief.
 
             2. **Is the input a Specific Question?**:
                - **ACTION:** Answer the question using evidence *strictly* from the document.
@@ -380,6 +373,9 @@ export const mockDb = {
             }
           ]
         },
+        config: taskType === 'QUIZ' ? {
+            responseMimeType: 'application/json'
+        } : undefined
       });
 
       return response.text || "Could not analyze the document content.";

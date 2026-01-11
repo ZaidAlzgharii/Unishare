@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Note } from '../types';
-import { FileText, Image as ImageIcon, File, Eye, Download, Bookmark, ThumbsUp, Check, X as XIcon, ShieldCheck, Flag, AlertTriangle, Share2 } from 'lucide-react';
+import { FileText, Image as ImageIcon, File, Eye, Download, Bookmark, ThumbsUp, Check, X as XIcon, ShieldCheck, Flag, AlertTriangle, Share2, Sparkles, Loader2, RefreshCw } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { mockDb } from '../services/firebase';
@@ -15,13 +15,20 @@ interface NoteCardProps {
 }
 
 const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSave }) => {
-  const { t, dir } = useLanguage();
+  const { t, dir, language } = useLanguage();
   const { user } = useAuth();
   const { addToast } = useToast();
   
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewInitialTask, setPreviewInitialTask] = useState<'SUMMARY' | 'QUIZ' | 'ROADMAP' | 'TAGS' | 'EXPLAIN' | undefined>(undefined);
+
   const [loadingAction, setLoadingAction] = useState(false);
   const [localUpvotes, setLocalUpvotes] = useState(note.upvotes);
+  
+  // Tag Generation State
+  const [generatedTags, setGeneratedTags] = useState<string[]>([]);
+  const [loadingTags, setLoadingTags] = useState(false);
+  const [tagError, setTagError] = useState(false);
   
   // Report State
   const [isReportOpen, setIsReportOpen] = useState(false);
@@ -44,6 +51,36 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
           default: return 'bg-slate-50 text-slate-600 border-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
       }
   }
+
+  const handleOpenPreview = (task?: 'SUMMARY' | 'QUIZ' | 'ROADMAP' | 'TAGS' | 'EXPLAIN') => {
+      setPreviewInitialTask(task);
+      setIsPreviewOpen(true);
+  }
+
+  const handleGenerateTags = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Allow retry if it failed previously
+    if (generatedTags.length > 0 && !tagError) return;
+
+    setLoadingTags(true);
+    setTagError(false);
+    try {
+        const result = await mockDb.generateAiContent(note.id, 'TAGS', undefined, language);
+        // Simple validation to ensure we got something meaningful
+        if (!result || result.includes("Error")) throw new Error("AI Generation Failed");
+        
+        const tags = result.split(/[,،]+/).map(t => t.trim()).filter(t => t && t.length > 0 && t.length < 20);
+        
+        if (tags.length === 0) throw new Error("No tags generated");
+        
+        setGeneratedTags(tags);
+    } catch (e) {
+        setTagError(true);
+        addToast('Failed to generate tags. Click to retry.', 'error');
+    } finally {
+        setLoadingTags(false);
+    }
+  };
 
   const handleApprove = async () => {
     if (!user || (user.role !== 'admin' && user.role !== 'owner')) return;
@@ -111,8 +148,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
   };
 
   const showAdminControls = (user?.role === 'admin' || user?.role === 'owner') && !note.isApproved;
-  const isVerifiedUploader = note.upvotes > 20 || note.uploaderName.includes('Sarah'); // Mock logic
-
+  
   return (
     <>
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:shadow-primary-500/10 transition-all duration-300 overflow-hidden flex flex-col h-full group relative hover:-translate-y-1">
@@ -150,13 +186,24 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
           </div>
 
           <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-4 leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">{note.description}</p>
+        
+          {/* Generated Tags Display */}
+          {generatedTags.length > 0 && !tagError && (
+            <div className="flex flex-wrap gap-2 mb-4 animate-in fade-in slide-in-from-top-2">
+                {generatedTags.slice(0, 5).map((tag, i) => (
+                    <span key={i} className="text-[10px] font-bold px-2 py-1 rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 border border-purple-100 dark:border-purple-800/50">
+                        #{tag}
+                    </span>
+                ))}
+            </div>
+          )}
         </div>
 
         {/* Actions Footer */}
         <div className="px-5 py-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between z-10">
           <div className="flex items-center gap-2">
             <button 
-                onClick={() => setIsPreviewOpen(true)}
+                onClick={() => handleOpenPreview()}
                 className="text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-white dark:hover:bg-slate-700 transition p-2 rounded-lg" 
                 title={t('btn_preview')}
             >
@@ -186,6 +233,24 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
             >
               <Share2 className="w-4 h-4" />
             </button>
+            {/* AI Tags Button (Inline Generation) */}
+            <button 
+                onClick={handleGenerateTags}
+                disabled={loadingTags || (generatedTags.length > 0 && !tagError)}
+                className={`transition p-2 rounded-lg flex items-center justify-center ${generatedTags.length > 0 && !tagError ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20' : tagError ? 'text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-900/20' : 'text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-white dark:hover:bg-slate-700'}`}
+                title={tagError ? "Retry Generation" : t('btn_ai_tags')}
+            >
+              {loadingTags ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
+              ) : tagError ? (
+                  <RefreshCw className="w-4 h-4" />
+              ) : (
+                  <Sparkles className={`w-4 h-4 ${generatedTags.length > 0 ? 'fill-current' : ''}`} />
+              )}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
             <button 
                 onClick={handleUpvote}
                 className="text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-white dark:hover:bg-slate-700 transition p-2 rounded-lg flex items-center gap-1.5"
@@ -193,48 +258,40 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
               <ThumbsUp className="w-4 h-4" />
               <span className="text-xs font-bold">{localUpvotes}</span>
             </button>
-            {/* Report Button */}
-            {user && (
+
+             {/* Report Button */}
+             {user && (
                 <button 
                     onClick={() => setIsReportOpen(true)}
-                    className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition p-2 rounded-lg ml-1"
+                    className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition p-2 rounded-lg"
                     title={t('btn_report')}
                 >
                     <Flag className="w-4 h-4" />
                 </button>
             )}
           </div>
+        </div>
 
-          {showAdminControls ? (
-            <div className="flex gap-1">
+        {/* Admin Footer */}
+        {showAdminControls && (
+            <div className="absolute top-4 right-4 z-20 flex gap-1">
                 <button
-                onClick={handleApprove}
+                onClick={(e) => { e.stopPropagation(); handleApprove(); }}
                 disabled={loadingAction}
                 className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition shadow-sm"
                 >
-                {loadingAction ? '...' : <><Check className="w-3 h-3" /> {t('btn_approve')}</>}
+                {loadingAction ? '...' : <Check className="w-3 h-3" />}
                 </button>
             </div>
-          ) : (
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <div className="relative">
-                     <span className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300 ring-2 ring-white dark:ring-slate-900">
-                        {note.uploaderName.charAt(0)}
-                    </span>
-                    {isVerifiedUploader && (
-                        <div className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-900 rounded-full p-[1px]">
-                            <ShieldCheck className="w-3 h-3 text-blue-500 fill-blue-500/20" />
-                        </div>
-                    )}
-                </div>
-                <span className="truncate max-w-[80px] font-medium">{note.uploaderName.split(' ')[0]}</span>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {isPreviewOpen && (
-        <PreviewModal note={note} onClose={() => setIsPreviewOpen(false)} />
+        <PreviewModal 
+            note={note} 
+            onClose={() => setIsPreviewOpen(false)} 
+            initialAiTask={previewInitialTask}
+        />
       )}
 
       {/* Report Modal */}

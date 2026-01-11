@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Download, BrainCircuit, Sparkles, MessageSquare, Stars, ChevronDown, Zap, CheckCircle2, FileText, HelpCircle, Map, Tag, MessageCircleQuestion, Send, Bot, RotateCcw, User as UserIcon, PanelRightClose, PanelRightOpen, ArrowLeft } from 'lucide-react';
+import { X, Download, BrainCircuit, Sparkles, MessageSquare, Stars, ChevronDown, Zap, CheckCircle2, FileText, HelpCircle, Map, Tag, MessageCircleQuestion, Send, Bot, RotateCcw, User as UserIcon, PanelRightClose, PanelRightOpen, ArrowLeft, Check, AlertCircle } from 'lucide-react';
 import { Note } from '../types';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -12,6 +12,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 interface PreviewModalProps {
   note: Note;
   onClose: () => void;
+  initialAiTask?: 'SUMMARY' | 'QUIZ' | 'ROADMAP' | 'TAGS' | 'EXPLAIN';
 }
 
 interface ChatMessage {
@@ -21,26 +22,167 @@ interface ChatMessage {
   timestamp: number;
 }
 
-const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
+interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation: string;
+}
+
+const QuizView: React.FC<{ content: string }> = ({ content }) => {
+    const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+    const [answers, setAnswers] = useState<Record<number, number>>({});
+    const [showResults, setShowResults] = useState(false);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        try {
+            // Sanitize content: remove markdown code blocks if present
+            const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
+            const parsed = JSON.parse(cleanContent);
+            if (Array.isArray(parsed)) {
+                setQuestions(parsed);
+            } else {
+                console.error("Quiz data is not an array:", parsed);
+                setError(true);
+            }
+        } catch (e) {
+            console.error("Failed to parse Quiz JSON:", e);
+            setError(true);
+        }
+    }, [content]);
+
+    if (error) {
+        return (
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl text-red-600 dark:text-red-300 text-sm">
+                <p className="font-bold mb-1">Error loading quiz</p>
+                <p>The AI response format was invalid. Please try generating the quiz again.</p>
+            </div>
+        );
+    }
+
+    if (questions.length === 0) return null;
+
+    const handleSelect = (qIndex: number, optionIndex: number) => {
+        if (showResults) return;
+        setAnswers(prev => ({ ...prev, [qIndex]: optionIndex }));
+    };
+
+    const score = questions.reduce((acc, q, i) => {
+        return acc + (answers[i] === q.correctAnswer ? 1 : 0);
+    }, 0);
+
+    return (
+        <div className="space-y-6 w-full max-w-full">
+            <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                <span className="font-bold text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                    <HelpCircle className="w-5 h-5" /> Quiz
+                </span>
+                {showResults && (
+                    <span className="font-bold text-amber-700 dark:text-amber-300">
+                        Score: {score} / {questions.length}
+                    </span>
+                )}
+            </div>
+
+            <div className="space-y-6">
+                {questions.map((q, i) => (
+                    <div key={i} className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700">
+                        <p className="font-semibold text-slate-800 dark:text-slate-200 mb-4 text-base">
+                            <span className="text-violet-500 mr-2">Q{i + 1}.</span>
+                            {q.question}
+                        </p>
+                        <div className="space-y-2">
+                            {q.options.map((opt, optIdx) => {
+                                const isSelected = answers[i] === optIdx;
+                                const isCorrect = q.correctAnswer === optIdx;
+                                let btnClass = "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700";
+                                
+                                if (showResults) {
+                                    if (isCorrect) btnClass = "bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-800 text-green-800 dark:text-green-200";
+                                    else if (isSelected) btnClass = "bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-800 text-red-800 dark:text-red-200";
+                                    else btnClass = "opacity-50";
+                                } else if (isSelected) {
+                                    btnClass = "bg-violet-50 dark:bg-violet-900/20 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 ring-1 ring-violet-500";
+                                }
+
+                                return (
+                                    <button
+                                        key={optIdx}
+                                        onClick={() => handleSelect(i, optIdx)}
+                                        disabled={showResults}
+                                        className={`w-full text-left p-3 rounded-lg border text-sm transition-all flex items-center justify-between ${btnClass}`}
+                                    >
+                                        <span>{opt}</span>
+                                        {showResults && isCorrect && <Check className="w-4 h-4" />}
+                                        {showResults && isSelected && !isCorrect && <X className="w-4 h-4" />}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {showResults && (
+                            <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg text-xs text-slate-600 dark:text-slate-400">
+                                <strong className="text-slate-700 dark:text-slate-300">Explanation:</strong> {q.explanation}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {!showResults && (
+                <button
+                    onClick={() => setShowResults(true)}
+                    disabled={Object.keys(answers).length < questions.length}
+                    className="w-full py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white font-bold rounded-xl transition shadow-lg shadow-violet-500/20"
+                >
+                    Submit Quiz
+                </button>
+            )}
+        </div>
+    );
+};
+
+const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose, initialAiTask }) => {
   const { t, dir } = useLanguage();
   const [numPages, setNumPages] = useState<number | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+  const isMounted = useRef(true);
   
   // Layout State
   const [activeTab, setActiveTab] = useState<'ai' | 'comments'>('ai');
   const [showSidebar, setShowSidebar] = useState(true);
 
   // AI State
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
+    try {
+        const saved = localStorage.getItem(`unishare_chat_${note.id}`);
+        return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+        return [];
+    }
+  });
   const [aiLoading, setAiLoading] = useState(false);
   const [userQuery, setUserQuery] = useState('');
   const [aiLanguage, setAiLanguage] = useState<'ar' | 'en'>('ar');
+  
+  // Ref to track if initial task has run
+  const hasRunInitialTask = useRef(false);
+
+  useEffect(() => {
+      return () => { isMounted.current = false; };
+  }, []);
+
+  // Persist chat history
+  useEffect(() => {
+    localStorage.setItem(`unishare_chat_${note.id}`, JSON.stringify(chatHistory));
+  }, [chatHistory, note.id]);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
   };
 
   const addMessage = (role: 'user' | 'model', content: string) => {
+    if (!isMounted.current) return;
     const newMessage: ChatMessage = {
       id: Math.random().toString(36).substring(7),
       role,
@@ -72,13 +214,37 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
     addMessage('user', displayQuery);
     setUserQuery(''); // Clear input
 
+    // Client-side greeting interception
+    if (task === 'EXPLAIN' && query) {
+        const lower = query.trim().toLowerCase();
+        // Regex for common greetings (hi, hello, hey, etc.) with optional punctuation
+        const greetingRegex = /^(hi|hello|hey|heya|howdy|greetings|salam|marhaba|hola|bonjour|good\s*morning|good\s*evening)[\s.!,]*$/i;
+        
+        if (greetingRegex.test(lower)) {
+            // Simulate a brief delay for natural feel, then respond locally
+            setTimeout(() => {
+                if (isMounted.current) {
+                    addMessage('model', t('ai_greeting'));
+                    setAiLoading(false);
+                }
+            }, 600);
+            return;
+        }
+    }
+
     try {
         const result = await mockDb.generateAiContent(note.id, task, query, aiLanguage);
-        addMessage('model', result);
+        if (isMounted.current) {
+            addMessage('model', result);
+        }
     } catch (e) {
-        addMessage('model', "Sorry, I encountered an error processing that request.");
+        if (isMounted.current) {
+            addMessage('model', "Sorry, I encountered an error processing that request.");
+        }
     } finally {
-        setAiLoading(false);
+        if (isMounted.current) {
+            setAiLoading(false);
+        }
     }
   };
 
@@ -94,6 +260,14 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
         resultRef.current.scrollTop = resultRef.current.scrollHeight;
     }
   }, [chatHistory, aiLoading, activeTab, showSidebar]);
+
+  // Handle Initial Task
+  useEffect(() => {
+    if (initialAiTask && !hasRunInitialTask.current) {
+        hasRunInitialTask.current = true;
+        handleAiTask(initialAiTask);
+    }
+  }, [initialAiTask]);
 
   const renderContent = () => {
     if (note.fileType === 'image') {
@@ -155,12 +329,22 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
 
   // Helper to render markdown-like content safely
   const renderMessageContent = (content: string) => {
+     const cleanContent = content.trim();
+
+     // Check for JSON Quiz format (naive check)
+     if ((cleanContent.startsWith('[') && cleanContent.includes('"question"')) || cleanContent.includes('```json')) {
+         // Attempt to find the array part if mixed with text
+         if (cleanContent.includes('"question"') && cleanContent.includes('"options"')) {
+             return <QuizView content={cleanContent} />;
+         }
+     }
+
      return content.split('\n').map((line, i) => {
         const trimmedLine = line.trim();
         if (!trimmedLine) return <div key={i} className="h-2" />;
         
-        const isHeader = trimmedLine.match(/^\d\./) || trimmedLine.startsWith('**') || trimmedLine.startsWith('##');
-        const isBullet = trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('*');
+        const isHeader = trimmedLine.match(/^##+\s/) || trimmedLine.match(/^\d\./);
+        const isBullet = trimmedLine.startsWith('•') || trimmedLine.startsWith('-') || trimmedLine.startsWith('* ');
         const containsArabic = /[\u0600-\u06FF]/.test(trimmedLine);
         
         return (
@@ -168,14 +352,16 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
                 key={i} 
                 dir={containsArabic ? 'rtl' : 'ltr'}
                 className={`
-                ${isHeader ? 'font-bold text-base mt-2 mb-1' : 'mb-1 text-sm leading-relaxed'}
-                ${isBullet ? 'list-item list-disc ml-4 rtl:mr-4' : ''}
+                ${isHeader ? 'font-bold text-base mt-2 mb-1 text-slate-900 dark:text-slate-100' : 'mb-1 text-sm leading-relaxed'}
+                ${isBullet ? 'list-item list-disc ml-4 rtl:mr-4 marker:text-slate-400' : ''}
                 ${containsArabic ? 'text-right' : 'text-left'}
                 `}
                 dangerouslySetInnerHTML={{ 
                     __html: trimmedLine
-                    .replace(/^##\s*/, '')
-                    .replace(/\*\*(.*?)\*\*/g, '<span class="font-bold">$1</span>') 
+                    .replace(/^##+\s*/, '')
+                    .replace(/\*\*(.*?)\*\*/g, '<span class="font-bold text-slate-900 dark:text-white">$1</span>')
+                    .replace(/\*(.*?)\*/g, '<span class="italic">$1</span>')
+                    .replace(/`(.*?)`/g, '<code class="bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded font-mono text-xs">$1</code>')
                 }}
             />
         );
@@ -355,8 +541,8 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ note, onClose }) => {
                                                 <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center shadow-sm mt-1 ${msg.role === 'user' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-slate-800 text-violet-600 border border-slate-200 dark:border-slate-700'}`}>
                                                     {msg.role === 'user' ? <UserIcon className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
                                                 </div>
-                                                <div className={`rounded-2xl px-4 py-3 shadow-sm text-sm border ${msg.role === 'user' ? 'bg-primary-600 text-white border-primary-500 rounded-tr-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 rounded-tl-sm'}`}>
-                                                    {msg.role === 'user' ? <p>{msg.content}</p> : <div className="prose prose-sm dark:prose-invert max-w-none">{renderMessageContent(msg.content)}</div>}
+                                                <div className={`rounded-2xl px-4 py-3 shadow-sm text-sm border ${msg.role === 'user' ? 'bg-primary-600 text-white border-primary-500 rounded-tr-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 rounded-tl-sm w-full'}`}>
+                                                    {msg.role === 'user' ? <p>{msg.content}</p> : <div className="w-full">{renderMessageContent(msg.content)}</div>}
                                                 </div>
                                             </div>
                                         </div>
