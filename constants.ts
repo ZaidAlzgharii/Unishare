@@ -115,6 +115,27 @@ export const TRANSLATIONS: TranslationDictionary = {
   btn_dismiss: { en: 'Dismiss', ar: 'تجاهل' },
   toast_report_dismissed: { en: 'Report dismissed.', ar: 'تم تجاهل البلاغ.' },
   ai_greeting: { en: 'Hello! I have analyzed the document. What specific part would you like me to explain?', ar: 'مرحباً! لقد قمت بتحليل المستند. ما الجزء المحدد الذي تود مني شرحه؟' },
+
+  // Suggestions
+  suggestion_modal_title: { en: 'Suggestion Box', ar: 'صندوق الاقتراحات' },
+  suggestion_desc: { en: 'We value your feedback! Let us know how we can improve UniShare.', ar: 'رأيك يهمنا! أخبرنا كيف يمكننا تحسين UniShare.' },
+  suggestion_placeholder: { en: 'I suggest that...', ar: 'أقترح أن...' },
+  btn_submit_suggestion: { en: 'Submit Suggestion', ar: 'إرسال الاقتراح' },
+  toast_suggestion_success: { en: 'Thanks! Your suggestion has been sent.', ar: 'شكراً! تم إرسال اقتراحك.' },
+  admin_stats_suggestions: { en: 'Suggestions', ar: 'الاقتراحات' },
+  tab_suggestions: { en: 'Suggestions', ar: 'الاقتراحات' },
+  table_content: { en: 'Content', ar: 'المحتوى' },
+  tooltip_suggestion: { en: 'Make a suggestion', ar: 'قدم اقتراحاً' },
+
+  // Edit Profile
+  edit_profile_title: { en: 'Edit Profile', ar: 'تعديل الملف الشخصي' },
+  edit_profile_btn: { en: 'Edit Profile', ar: 'تعديل الملف' },
+  label_old_password: { en: 'Old Password (Required for password change)', ar: 'كلمة المرور القديمة (مطلوبة لتغيير الكلمة)' },
+  label_new_password: { en: 'New Password', ar: 'كلمة المرور الجديدة' },
+  label_avatar: { en: 'Profile Picture', ar: 'الصورة الشخصية' },
+  btn_save_changes: { en: 'Save Changes', ar: 'حفظ التغييرات' },
+  toast_profile_updated: { en: 'Profile updated successfully!', ar: 'تم تحديث الملف الشخصي بنجاح!' },
+  error_old_password: { en: 'Incorrect old password', ar: 'كلمة المرور القديمة غير صحيحة' },
 };
 
 export const MOCK_NOTES: Note[] = [];

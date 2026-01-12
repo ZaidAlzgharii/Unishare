@@ -4,9 +4,9 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { mockDb } from '../services/firebase';
-import { Note, Report } from '../types';
+import { Note, Report, Suggestion } from '../types';
 import Navbar from '../components/Navbar';
-import { Check, X, Trash2, ArrowUpRight, ArrowUpDown, FileText, Clock, CheckCircle2, ThumbsUp, AlertTriangle, Flag, EyeOff } from 'lucide-react';
+import { Check, X, Trash2, ArrowUpRight, ArrowUpDown, FileText, Clock, CheckCircle2, ThumbsUp, AlertTriangle, Flag, EyeOff, Lightbulb } from 'lucide-react';
 import PreviewModal from '../components/PreviewModal';
 
 const AdminPanel: React.FC = () => {
@@ -17,13 +17,14 @@ const AdminPanel: React.FC = () => {
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'reported'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'reported' | 'suggestions'>('all');
   const [sortBy, setSortBy] = useState<'date_newest' | 'date_oldest' | 'title' | 'uploader'>('date_newest');
   const [previewNote, setPreviewNote] = useState<Note | null>(null);
   
   // Modal State
-  const [confirmAction, setConfirmAction] = useState<{ type: 'approve' | 'reject' | 'delete', id: string } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'approve' | 'reject' | 'delete' | 'deleteSuggestion', id: string } | null>(null);
   const [processing, setProcessing] = useState(false);
 
   // Protected Route Check
@@ -36,25 +37,39 @@ const AdminPanel: React.FC = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    
+    // Fetch each resource independently so one failure (like missing suggestions table) doesn't break the page
     try {
-      const [notesData, reportsData] = await Promise.all([
-          mockDb.getNotes(),
-          mockDb.getReports()
-      ]);
+      const notesData = await mockDb.getNotes();
       setNotes(notesData);
+    } catch(e) {
+        console.error(e);
+        addToast("Error fetching notes", "error");
+    }
+
+    try {
+      const reportsData = await mockDb.getReports();
       setReports(reportsData);
     } catch(e) {
-        addToast("Error fetching data", "error");
-    } finally {
-      setLoading(false);
+        console.error(e);
     }
+
+    try {
+      const suggestionsData = await mockDb.getSuggestions();
+      setSuggestions(suggestionsData);
+    } catch(e) {
+        // Suggestions are optional feature, fail silently in UI
+        console.warn("Suggestions fetch failed (optional feature)");
+    }
+
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  const initiateAction = (action: 'approve' | 'reject' | 'delete', id: string) => {
+  const initiateAction = (action: 'approve' | 'reject' | 'delete' | 'deleteSuggestion', id: string) => {
       if (action === 'approve') {
           executeAction('approve', id);
       } else {
@@ -62,15 +77,17 @@ const AdminPanel: React.FC = () => {
       }
   };
 
-  const executeAction = async (action: 'approve' | 'reject' | 'delete', id: string) => {
+  const executeAction = async (action: 'approve' | 'reject' | 'delete' | 'deleteSuggestion', id: string) => {
     setProcessing(true);
     const prevNotes = [...notes];
+    const prevSuggestions = [...suggestions];
 
     if (action === 'delete' || action === 'reject') {
         setNotes(prev => prev.filter(n => n.id !== id));
-        // If note is deleted, also remove associated reports locally for UI snappy-ness
         setReports(prev => prev.filter(r => r.noteId !== id));
-    } else {
+    } else if (action === 'deleteSuggestion') {
+        setSuggestions(prev => prev.filter(s => s.id !== id));
+    } else if (action === 'approve') {
         setNotes(prev => prev.map(n => n.id === id ? { ...n, isApproved: true } : n));
     }
     
@@ -80,13 +97,18 @@ const AdminPanel: React.FC = () => {
       if (action === 'approve') await mockDb.approveNote(id);
       if (action === 'reject') await mockDb.rejectNote(id);
       if (action === 'delete') await mockDb.deleteNote(id);
+      if (action === 'deleteSuggestion') await mockDb.deleteSuggestion(id);
       
-      addToast(action === 'delete' || action === 'reject' ? t('toast_delete_success') : t('toast_approve_success'), 'success');
+      addToast((action === 'delete' || action === 'reject' || action === 'deleteSuggestion') ? t('toast_delete_success') : t('toast_approve_success'), 'success');
       // Refresh to ensure sync
       fetchData();
     } catch (e) {
       addToast('Operation failed', 'error');
-      setNotes(prevNotes); // Revert
+      if (action === 'deleteSuggestion') {
+          setSuggestions(prevSuggestions);
+      } else {
+          setNotes(prevNotes); // Revert
+      }
     } finally {
         setProcessing(false);
     }
@@ -129,6 +151,7 @@ const AdminPanel: React.FC = () => {
     pending: notes.filter(n => !n.isApproved).length,
     approved: notes.filter(n => n.isApproved).length,
     reports: reports.length,
+    suggestions: suggestions.length,
     upvotes: notes.reduce((acc, curr) => acc + curr.upvotes, 0)
   };
 
@@ -142,45 +165,56 @@ const AdminPanel: React.FC = () => {
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-8">{t('admin_dashboard')}</h1>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-8">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
                 <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_total')}</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.total}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_total')}</p>
+                    <p className="text-xl font-bold text-slate-900 dark:text-white">{stats.total}</p>
                 </div>
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
-                    <FileText className="w-6 h-6" />
+                <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+                    <FileText className="w-5 h-5" />
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-amber-300 dark:hover:border-amber-700 transition-colors">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-amber-300 dark:hover:border-amber-700 transition-colors">
                 <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_pending')}</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.pending}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_pending')}</p>
+                    <p className="text-xl font-bold text-slate-900 dark:text-white">{stats.pending}</p>
                 </div>
-                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
-                    <Clock className="w-6 h-6" />
+                <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-600 dark:text-amber-400">
+                    <Clock className="w-5 h-5" />
                 </div>
             </div>
 
              {/* Reports Stat */}
-             <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-red-300 dark:hover:border-red-700 transition-colors">
+             <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-red-300 dark:hover:border-red-700 transition-colors">
                 <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_reports')}</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.reports}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_reports')}</p>
+                    <p className="text-xl font-bold text-slate-900 dark:text-white">{stats.reports}</p>
                 </div>
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-xl text-red-600 dark:text-red-400 group-hover:scale-110 transition-transform">
-                    <Flag className="w-6 h-6" />
+                <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-600 dark:text-red-400">
+                    <Flag className="w-5 h-5" />
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-green-300 dark:hover:border-green-700 transition-colors">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-green-300 dark:hover:border-green-700 transition-colors">
                 <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_approved')}</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.approved}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_approved')}</p>
+                    <p className="text-xl font-bold text-slate-900 dark:text-white">{stats.approved}</p>
                 </div>
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform">
-                    <CheckCircle2 className="w-6 h-6" />
+                <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg text-green-600 dark:text-green-400">
+                    <CheckCircle2 className="w-5 h-5" />
+                </div>
+            </div>
+
+            {/* Suggestions Stat */}
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-purple-300 dark:hover:border-purple-700 transition-colors col-span-2 lg:col-span-1">
+                <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_suggestions')}</p>
+                    <p className="text-xl font-bold text-slate-900 dark:text-white">{stats.suggestions}</p>
+                </div>
+                <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-600 dark:text-purple-400">
+                    <Lightbulb className="w-5 h-5" />
                 </div>
             </div>
         </div>
@@ -188,8 +222,8 @@ const AdminPanel: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           
           <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-             {/* Sort Dropdown (Disabled in reports view) */}
-            {statusFilter !== 'reported' && (
+             {/* Sort Dropdown (Disabled in reports/suggestions view) */}
+            {statusFilter !== 'reported' && statusFilter !== 'suggestions' && (
                 <div className="relative">
                 <ArrowUpDown className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none ${dir === 'rtl' ? 'right-3' : 'left-3'}`} />
                 <select 
@@ -214,6 +248,10 @@ const AdminPanel: React.FC = () => {
                   {t('tab_reported')}
                   {stats.reports > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 rounded-full">{stats.reports}</span>}
               </button>
+              <button onClick={() => setStatusFilter('suggestions')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition whitespace-nowrap flex items-center gap-1.5 ${statusFilter === 'suggestions' ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
+                  {t('tab_suggestions')}
+                  {stats.suggestions > 0 && <span className="bg-purple-500 text-white text-[10px] px-1.5 rounded-full">{stats.suggestions}</span>}
+              </button>
             </div>
           </div>
         </div>
@@ -223,28 +261,63 @@ const AdminPanel: React.FC = () => {
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 dark:bg-slate-800/50 text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-800">
                 <tr>
-                  <th className={`px-6 py-4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>{t('form_title')}</th>
-                  {statusFilter === 'reported' ? (
+                  {statusFilter === 'suggestions' ? (
                       <>
+                        <th className={`px-6 py-4 w-1/4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>{t('table_uploader')}</th>
+                        <th className={`px-6 py-4 w-1/2 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>{t('table_content')}</th>
+                        <th className={`px-6 py-4 w-1/4 text-center`}>{t('table_actions')}</th>
+                      </>
+                  ) : statusFilter === 'reported' ? (
+                      <>
+                        <th className={`px-6 py-4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>{t('form_title')}</th>
                         <th className={`px-6 py-4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>{t('table_reason')}</th>
                         <th className={`px-6 py-4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>{t('table_reporter')}</th>
+                        <th className={`px-6 py-4 text-center`}>{t('table_actions')}</th>
                       </>
                   ) : (
                       <>
+                        <th className={`px-6 py-4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>{t('form_title')}</th>
                         <th className={`px-6 py-4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>{t('table_uploader')}</th>
                         <th className={`px-6 py-4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>{t('table_date')}</th>
                         <th className={`px-6 py-4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>{t('table_status')}</th>
+                        <th className={`px-6 py-4 text-center`}>{t('table_actions')}</th>
                       </>
                   )}
-                  <th className={`px-6 py-4 text-center`}>{t('table_actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                 {loading ? (
                    <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">{t('loading')}</td></tr>
                 ) : (
-                    // Logic Loop: If Reported, map reports. Else map sortedNotes.
-                    statusFilter === 'reported' ? (
+                    // LOGIC SWITCH: Suggestions, Reports, or Notes
+                    statusFilter === 'suggestions' ? (
+                        suggestions.length === 0 ? (
+                            <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">No suggestions yet.</td></tr>
+                        ) : (
+                            suggestions.map(s => (
+                                <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition bg-white dark:bg-slate-900">
+                                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white align-top">
+                                        <div className="flex flex-col">
+                                            <span className="font-semibold">{s.userName}</span>
+                                            <span className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{new Date(s.date).toLocaleDateString()}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-slate-600 dark:text-slate-300 align-top whitespace-pre-wrap">
+                                        {s.content}
+                                    </td>
+                                    <td className="px-6 py-4 text-center align-top">
+                                        <button 
+                                            onClick={() => initiateAction('deleteSuggestion', s.id)}
+                                            className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                                            title={t('btn_delete')}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )
+                    ) : statusFilter === 'reported' ? (
                         reports.length === 0 ? (
                             <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">No active reports.</td></tr>
                         ) : (
@@ -383,7 +456,7 @@ const AdminPanel: React.FC = () => {
                 </div>
                 
                 <p className="text-slate-600 dark:text-slate-300 mb-6 text-sm leading-relaxed">
-                    {t('confirm_delete')}
+                    {confirmAction.type === 'deleteSuggestion' ? "Are you sure you want to remove this suggestion?" : t('confirm_delete')}
                 </p>
                 
                 <div className="flex gap-3">
@@ -397,7 +470,7 @@ const AdminPanel: React.FC = () => {
                     <button 
                         disabled={processing}
                         onClick={() => executeAction(confirmAction.type, confirmAction.id)}
-                        className={`flex-1 py-2.5 font-bold rounded-xl shadow-lg transition text-white ${confirmAction.type === 'delete' || confirmAction.type === 'reject' ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' : 'bg-primary-600 hover:bg-primary-700 shadow-primary-500/20'}`}
+                        className={`flex-1 py-2.5 font-bold rounded-xl shadow-lg transition text-white ${confirmAction.type.includes('delete') || confirmAction.type === 'reject' ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' : 'bg-primary-600 hover:bg-primary-700 shadow-primary-500/20'}`}
                     >
                         {processing ? '...' : t('btn_confirm')}
                     </button>

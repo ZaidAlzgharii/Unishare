@@ -8,7 +8,7 @@ interface Toast {
 
 interface ToastContextType {
   toasts: Toast[];
-  addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  addToast: (message: any, type?: 'success' | 'error' | 'info') => void;
   removeToast: (id: string) => void;
 }
 
@@ -17,9 +17,27 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  const addToast = (message: any, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Math.random().toString(36).substring(7);
-    setToasts((prev) => [...prev, { id, message, type }]);
+    
+    // Defensive coding to handle objects passed as messages (prevents [object Object])
+    let safeMessage = '';
+    
+    if (typeof message === 'string') {
+        safeMessage = message;
+    } else if (message instanceof Error) {
+        safeMessage = message.message;
+    } else if (typeof message === 'object' && message !== null) {
+        // Try to extract a message property or fallback
+        safeMessage = message.message || message.error || "An unexpected error occurred";
+        if (typeof safeMessage !== 'string') {
+            safeMessage = "An unexpected error occurred";
+        }
+    } else {
+        safeMessage = String(message);
+    }
+
+    setToasts((prev) => [...prev, { id, message: safeMessage, type }]);
     setTimeout(() => removeToast(id), 3000);
   };
 

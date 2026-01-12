@@ -6,8 +6,9 @@ import { mockDb } from '../services/firebase';
 import { Note } from '../types';
 import NoteCard from '../components/NoteCard';
 import NoteCardSkeleton from '../components/NoteCardSkeleton';
-import { User, Calendar, Award, BookOpen, Trash2, Search } from 'lucide-react';
+import { User, Calendar, Award, BookOpen, Trash2, Search, ShieldCheck, Edit, X, Upload, Loader2, Save } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import { supabase } from '../services/supabaseClient';
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
@@ -17,6 +18,16 @@ const Profile: React.FC = () => {
   const [myNotes, setMyNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [nameFilter, setNameFilter] = useState('');
+
+  // Edit Profile State
+  const [isEditing, setIsEditing] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    oldPassword: '',
+    newPassword: '',
+    file: null as File | null
+  });
 
   const fetchMyNotes = async () => {
     if(!user) return;
@@ -33,6 +44,9 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     fetchMyNotes();
+    if (user) {
+        setFormData(prev => ({ ...prev, name: user.name }));
+    }
   }, [user]);
 
   const handleDelete = async (id: string) => {
@@ -41,6 +55,35 @@ const Profile: React.FC = () => {
         addToast("Note deleted", "success");
         fetchMyNotes();
      }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!user) return;
+      
+      setEditLoading(true);
+      try {
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser || !authUser.email) throw new Error("Authentication error");
+
+          await mockDb.updateUserProfile(user.id, authUser.email, {
+              name: formData.name,
+              oldPassword: formData.oldPassword,
+              newPassword: formData.newPassword,
+              file: formData.file
+          });
+          
+          addToast(t('toast_profile_updated'), 'success');
+          setIsEditing(false);
+          // Force a reload to update context or refetch profile
+          window.location.reload(); 
+      } catch (e: any) {
+          console.error(e);
+          const msg = e.message === "Incorrect old password." ? t('error_old_password') : (e.message || "Update failed");
+          addToast(msg, 'error');
+      } finally {
+          setEditLoading(false);
+      }
   };
 
   if (!user) return null;
@@ -67,7 +110,7 @@ const Profile: React.FC = () => {
          <div className="container mx-auto px-4 max-w-5xl relative z-10">
             <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
                {/* Avatar */}
-               <div className="w-32 h-32 rounded-full ring-4 ring-white dark:ring-slate-800 shadow-xl overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+               <div className="w-32 h-32 rounded-full ring-4 ring-white dark:ring-slate-800 shadow-xl overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center relative group">
                   {user.avatar ? (
                       <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                   ) : (
@@ -77,7 +120,16 @@ const Profile: React.FC = () => {
                
                {/* User Info */}
                <div className="flex-1 text-center md:text-left">
-                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{user.name}</h1>
+                  <div className="flex flex-col md:flex-row items-center gap-4 mb-2">
+                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{user.name}</h1>
+                    <button 
+                        onClick={() => setIsEditing(true)}
+                        className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium transition flex items-center gap-1.5"
+                    >
+                        <Edit className="w-3.5 h-3.5" />
+                        {t('edit_profile_btn')}
+                    </button>
+                  </div>
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-slate-600 dark:text-slate-400 mb-6">
                       <span className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-sm font-medium capitalize">
                           <User className="w-4 h-4" />
@@ -87,6 +139,12 @@ const Profile: React.FC = () => {
                           <Calendar className="w-4 h-4" />
                           {t('profile_member_since')} {user.joinedAt ? new Date(user.joinedAt).getFullYear() : new Date().getFullYear()}
                       </span>
+                      {user.role === 'student' && (
+                         <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold border ${user.trustPoints >= 5 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
+                            <ShieldCheck className="w-4 h-4" />
+                            Trust Points: {user.trustPoints}
+                         </span>
+                      )}
                   </div>
 
                   {/* Stats Cards */}
@@ -157,6 +215,101 @@ const Profile: React.FC = () => {
              )}
           </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      {isEditing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh]" dir={dir}>
+                <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-10">
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('edit_profile_title')}</h2>
+                    <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 transition">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                
+                <div className="overflow-y-auto p-6">
+                    <form onSubmit={handleEditSubmit} className="space-y-5">
+                        
+                        {/* Name */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('name_label')}</label>
+                            <input
+                                type="text"
+                                required
+                                value={formData.name}
+                                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-slate-900 dark:text-white"
+                            />
+                        </div>
+
+                        {/* Avatar Upload */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('label_avatar')}</label>
+                            <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-primary-400 transition cursor-pointer relative">
+                                <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    onChange={(e) => setFormData({...formData, file: e.target.files ? e.target.files[0] : null})}
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                />
+                                <Upload className="w-6 h-6 text-slate-400 mb-2" />
+                                <span className="text-xs font-medium text-center truncate w-full px-2">
+                                    {formData.file ? formData.file.name : t('form_file')}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="w-full h-px bg-slate-100 dark:bg-slate-800 my-2"></div>
+                        
+                        {/* Change Password Section */}
+                        <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-100 dark:border-amber-900/30 space-y-4">
+                            <h3 className="text-sm font-bold text-amber-800 dark:text-amber-500">Change Password (Optional)</h3>
+                            
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">{t('label_new_password')}</label>
+                                <input
+                                    type="password"
+                                    value={formData.newPassword}
+                                    onChange={(e) => setFormData({...formData, newPassword: e.target.value})}
+                                    placeholder="••••••••"
+                                    className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none text-slate-900 dark:text-white"
+                                />
+                            </div>
+
+                            {formData.newPassword && (
+                                <div className="animate-in fade-in slide-in-from-top-1">
+                                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">{t('label_old_password')}</label>
+                                    <input
+                                        type="password"
+                                        required
+                                        value={formData.oldPassword}
+                                        onChange={(e) => setFormData({...formData, oldPassword: e.target.value})}
+                                        placeholder="••••••••"
+                                        className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none text-slate-900 dark:text-white"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="pt-2">
+                            <button
+                                type="submit"
+                                disabled={editLoading}
+                                className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold shadow-lg shadow-primary-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                            >
+                                {editLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                                    <>
+                                        <Save className="w-4 h-4" />
+                                        {t('btn_save_changes')}
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

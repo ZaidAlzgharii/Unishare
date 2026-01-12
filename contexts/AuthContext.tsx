@@ -52,7 +52,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           role: (data.role as UserRole) || 'student',
           // Ensure we always have an avatar, falling back to generated one if DB is null/empty
           avatar: data.avatar_url || defaultAvatar,
-          joinedAt: joinedAt || new Date().toISOString()
+          joinedAt: joinedAt || new Date().toISOString(),
+          // New Simple Trust Points Logic
+          trustPoints: data.trust_points || 0
         });
       } else {
         // Fallback: If profile row is missing (trigger delay), check Auth Metadata
@@ -65,7 +67,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             name: metaName,
             role: metaRole,
             avatar: defaultAvatar,
-            joinedAt: joinedAt || new Date().toISOString()
+            joinedAt: joinedAt || new Date().toISOString(),
+            trustPoints: 0
         });
       }
     } catch (e) {
@@ -76,7 +79,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           name: email.split('@')[0],
           role: 'student',
           avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${email.split('@')[0]}`,
-          joinedAt: createdAt || new Date().toISOString()
+          joinedAt: createdAt || new Date().toISOString(),
+          trustPoints: 0
       });
     }
   };
@@ -160,7 +164,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 name: cleanName,
                 role,
                 avatar: defaultAvatar,
-                joinedAt: data.user.created_at || new Date().toISOString()
+                joinedAt: data.user.created_at || new Date().toISOString(),
+                trustPoints: 0
             });
             return { success: true, emailConfirmationRequired: false };
         }

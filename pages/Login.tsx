@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
-import { Mail, Lock, User, ArrowRight, Loader2, Moon, Sun, Globe, CheckCircle2, KeyRound, RefreshCw } from 'lucide-react';
+import { mockDb } from '../services/firebase';
+import { Mail, Lock, User, ArrowRight, Loader2, Moon, Sun, Globe, CheckCircle2, KeyRound, RefreshCw, Users } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { t, dir, language, setLanguage } = useLanguage();
@@ -15,6 +16,7 @@ const Login: React.FC = () => {
 
   const [view, setView] = useState<'login' | 'register' | 'verify'>('login');
   const [loading, setLoading] = useState(false);
+  const [userCount, setUserCount] = useState<number>(0);
   
   // Form State
   const [email, setEmail] = useState('');
@@ -35,6 +37,15 @@ const Login: React.FC = () => {
     }
     return () => clearInterval(interval);
   }, [resendTimer]);
+
+  useEffect(() => {
+      // Fetch user count for social proof
+      const fetchStats = async () => {
+          const count = await mockDb.getUserCount();
+          setUserCount(count);
+      };
+      fetchStats();
+  }, []);
 
   const handleResend = async () => {
     if (resendTimer > 0) return;
@@ -125,6 +136,15 @@ const Login: React.FC = () => {
              <div className="mb-8 p-3 bg-white/10 backdrop-blur-md w-fit rounded-2xl border border-white/20 shadow-xl">
                 <img src="https://cdn-icons-png.flaticon.com/512/3413/3413535.png" alt="UniShare" className="w-12 h-12 object-contain" />
              </div>
+
+             {/* User Count Badge */}
+             {userCount > 0 && (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm text-sm font-medium text-slate-200 mb-6 animate-in fade-in slide-in-from-bottom-3">
+                    <Users className="w-4 h-4 text-primary-400" />
+                    <span>Join <span className="text-white font-bold">{userCount.toLocaleString()}+</span> students</span>
+                </div>
+             )}
+
              <h1 className="text-5xl font-extrabold mb-6 tracking-tight leading-tight">Share Knowledge,<br/>Grow Together.</h1>
              <p className="text-xl text-slate-300 leading-relaxed mb-8">Join the premier academic community. Access verified notes, share your insights, and elevate your learning journey.</p>
              
@@ -166,6 +186,16 @@ const Login: React.FC = () => {
         </div>
 
         <div className="w-full max-w-md" dir={dir}>
+            {/* Social Proof (Mobile Only) - NEW ADDITION */}
+            {userCount > 0 && (
+                <div className="lg:hidden flex justify-center mb-6 animate-in fade-in slide-in-from-top-2">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-50 dark:bg-primary-900/30 border border-primary-100 dark:border-primary-800 text-xs font-medium text-primary-700 dark:text-primary-300">
+                        <Users className="w-3.5 h-3.5" />
+                        <span>Join <span className="font-bold">{userCount.toLocaleString()}+</span> students</span>
+                    </div>
+                </div>
+            )}
+
             <div className="text-center mb-10 lg:text-left">
                 <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-3">
                     {view === 'register' ? t('btn_register') : view === 'verify' ? 'Verify Account' : t('login_title')}
