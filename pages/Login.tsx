@@ -5,7 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import { mockDb } from '../services/firebase';
-import { Mail, Lock, User, ArrowRight, Loader2, Moon, Sun, Globe, CheckCircle2, KeyRound, RefreshCw, Users } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Loader2, Moon, Sun, Globe, CheckCircle2, KeyRound, RefreshCw, Users, MailWarning } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { t, dir, language, setLanguage } = useLanguage();
@@ -53,7 +53,7 @@ const Login: React.FC = () => {
     try {
         const result = await resendOtp(pendingEmail);
         if (result.success) {
-            addToast('Code resent! Check your inbox.', 'success');
+            addToast('Confirmation link/code resent! Check your inbox.', 'success');
             setResendTimer(60); // 60 second cooldown
         } else {
             addToast(result.message || 'Failed to resend code', 'error');
@@ -88,7 +88,7 @@ const Login: React.FC = () => {
         }
       } 
       else if (view === 'verify') {
-        // Verify OTP
+        // Verify OTP (Only if user has a code. Link clicks handled by AuthContext auto-detect)
         const result = await verifyEmail(pendingEmail.trim(), otp.trim());
         if (result.success) {
             addToast(t('toast_welcome'), 'success');
@@ -107,10 +107,10 @@ const Login: React.FC = () => {
           // Check for specific Supabase error about unverified email
           const msg = result.message?.toLowerCase() || '';
           if (msg.includes('email not confirmed')) {
-             addToast(t('login_error_verify'), 'error');
+             addToast("Please verify your email address.", 'info');
              setPendingEmail(email.trim());
              setView('verify');
-             setResendTimer(0); // Allow immediate resend if they came from login failure
+             setResendTimer(0); // Allow immediate resend
           } else {
              addToast(result.message || t('login_error'), 'error');
           }
@@ -186,7 +186,7 @@ const Login: React.FC = () => {
         </div>
 
         <div className="w-full max-w-md" dir={dir}>
-            {/* Social Proof (Mobile Only) - NEW ADDITION */}
+            {/* Social Proof (Mobile Only) */}
             {userCount > 0 && (
                 <div className="lg:hidden flex justify-center mb-6 animate-in fade-in slide-in-from-top-2">
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-50 dark:bg-primary-900/30 border border-primary-100 dark:border-primary-800 text-xs font-medium text-primary-700 dark:text-primary-300">
@@ -198,10 +198,10 @@ const Login: React.FC = () => {
 
             <div className="text-center mb-10 lg:text-left">
                 <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-3">
-                    {view === 'register' ? t('btn_register') : view === 'verify' ? 'Verify Account' : t('login_title')}
+                    {view === 'register' ? t('btn_register') : view === 'verify' ? 'Confirm Email' : t('login_title')}
                 </h2>
                 <p className="text-slate-500 dark:text-slate-400">
-                    {view === 'register' ? t('register_subtitle') : view === 'verify' ? `Enter the code sent to ${pendingEmail}` : t('login_subtitle')}
+                    {view === 'register' ? t('register_subtitle') : view === 'verify' ? `Verify account for ${pendingEmail}` : t('login_subtitle')}
                 </p>
             </div>
 
@@ -210,13 +210,23 @@ const Login: React.FC = () => {
                 {/* VERIFICATION VIEW */}
                 {view === 'verify' && (
                     <div className="animate-in slide-in-from-right-4 fade-in duration-300 space-y-5">
+                         
+                         {/* Info Box */}
+                         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 rounded-xl p-4 flex items-start gap-3">
+                            <MailWarning className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                            <div className="text-sm text-amber-800 dark:text-amber-200">
+                                <p className="font-semibold mb-1">Check your email</p>
+                                <p className="opacity-90 mb-2">We sent a confirmation link to <strong>{pendingEmail}</strong>. Please click the link to activate your account.</p>
+                                <p className="opacity-75 text-xs">If you received a 6-digit code instead, enter it below.</p>
+                            </div>
+                         </div>
+
                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2 ml-1">One-Time Password (OTP)</label>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2 ml-1">Verification Code (Optional)</label>
                             <div className="relative group">
                                 <KeyRound className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary-500 transition-colors ${dir === 'rtl' ? 'right-4' : 'left-4'}`} />
                                 <input
                                     type="text"
-                                    required
                                     value={otp}
                                     onChange={(e) => setOtp(e.target.value)}
                                     className={`w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-3.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition font-medium tracking-widest text-lg ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'}`}
@@ -227,7 +237,7 @@ const Login: React.FC = () => {
                          </div>
 
                         <div className="flex items-center justify-between text-xs">
-                             <p className="text-slate-400 ml-1">Check your spam folder.</p>
+                             <p className="text-slate-400 ml-1">Check spam folder if needed.</p>
                              <button
                                 type="button"
                                 onClick={handleResend}
@@ -235,7 +245,7 @@ const Login: React.FC = () => {
                                 className={`font-bold flex items-center gap-1.5 transition ${resendTimer > 0 ? 'text-slate-400 cursor-not-allowed' : 'text-primary-600 hover:text-primary-700'}`}
                              >
                                 <RefreshCw className={`w-3 h-3 ${loading && resendTimer === 0 ? 'animate-spin' : ''}`} />
-                                {resendTimer > 0 ? `Resend code in ${resendTimer}s` : 'Resend Code'}
+                                {resendTimer > 0 ? `Resend link in ${resendTimer}s` : 'Resend Link'}
                              </button>
                         </div>
                     </div>
@@ -304,28 +314,31 @@ const Login: React.FC = () => {
                             <Loader2 className="w-6 h-6 animate-spin" />
                         ) : (
                         <>
-                            {view === 'register' ? t('btn_register') : view === 'verify' ? 'Verify Email' : t('btn_login')}
+                            {view === 'register' ? t('btn_register') : view === 'verify' ? 'Confirm Code' : t('btn_login')}
                             <ArrowRight className="w-5 h-5" />
                         </>
                         )}
                     </button>
+                    
+                    {view === 'verify' && (
+                        <button
+                            type="button"
+                            onClick={() => setView('login')}
+                            className="w-full py-2 text-slate-500 dark:text-slate-400 text-sm hover:text-slate-700 dark:hover:text-slate-200"
+                        >
+                            Back to Login
+                        </button>
+                    )}
                 </div>
             </form>
 
             <div className="mt-8 text-center space-y-4">
-                {view !== 'verify' ? (
+                {view !== 'verify' && (
                     <button 
                         onClick={() => setView(view === 'login' ? 'register' : 'login')}
                         className="text-slate-600 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 font-semibold transition"
                     >
                         {view === 'register' ? t('toggle_login') : t('toggle_register')}
-                    </button>
-                ) : (
-                    <button 
-                        onClick={() => setView('login')}
-                        className="text-slate-600 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 font-semibold transition"
-                    >
-                        Back to Login
                     </button>
                 )}
             </div>

@@ -1,4 +1,4 @@
-import { Note, Comment, User, Report, Suggestion } from '../types';
+import { Note, Comment, User, Report, Suggestion, UserRole } from '../types';
 import { GoogleGenAI } from "@google/genai";
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import mammoth from 'mammoth';
@@ -95,6 +95,51 @@ export const mockDb = {
             avatar_url: avatarUrl 
         }
     });
+  },
+
+  // --- ADMIN USER MANAGEMENT ---
+
+  getUsers: async (): Promise<User[]> => {
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        // Return dummy list for demo
+        return [
+            { id: '1', name: 'Admin User', role: 'admin', avatar: '', joinedAt: new Date().toISOString(), trustPoints: 100 },
+            { id: '2', name: 'Student One', role: 'student', avatar: '', joinedAt: new Date().toISOString(), trustPoints: 20 },
+            { id: '3', name: 'Student Two', role: 'student', avatar: '', joinedAt: new Date().toISOString(), trustPoints: 55 }
+        ];
+    }
+
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+
+    return (data || []).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        role: p.role,
+        avatar: p.avatar_url,
+        joinedAt: p.created_at,
+        trustPoints: p.trust_points
+    }));
+  },
+
+  updateUserRole: async (targetUserId: string, newRole: UserRole): Promise<void> => {
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        console.log(`Mock: User ${targetUserId} role updated to ${newRole}`);
+        return;
+    }
+
+    const { error } = await supabase.rpc('update_user_role', {
+        target_user_id: targetUserId,
+        new_role: newRole
+    });
+
+    if (error) throw new Error(error.message);
   },
 
   // --- NOTES ---

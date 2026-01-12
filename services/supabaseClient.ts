@@ -1,19 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Retrieve credentials from environment variables or use empty strings
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
+// CONFIGURATION: Connected to Project "mteccwfuueovbmeiovsa"
+const supabaseUrl = process.env.SUPABASE_URL || 'https://mteccwfuueovbmeiovsa.supabase.co';
+const supabaseKey = process.env.SUPABASE_ANON_KEY || 'sb_publishable_eNtLFSZP_gEldH2lUg9O8w_6KH25Q7z';
 
 // Logic to determine if Supabase is properly configured
-// We check if the URL is present and NOT the placeholder value
 export const isSupabaseConfigured = 
     supabaseUrl.length > 0 && 
     supabaseKey.length > 0 &&
-    !supabaseUrl.includes('iusuzhplilrabrsduljs'); // Filter out the placeholder if it was hardcoded
+    !supabaseUrl.includes('placeholder');
 
-// Create the client with valid credentials or dummy ones to prevent crash on init
-// Real requests will be blocked by the 'isSupabaseConfigured' check in services
-export const supabase = createClient(
-    isSupabaseConfigured ? supabaseUrl : 'https://placeholder.supabase.co', 
-    isSupabaseConfigured ? supabaseKey : 'placeholder-key'
-);
+// Create the client
+export const supabase = createClient(supabaseUrl, supabaseKey);

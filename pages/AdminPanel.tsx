@@ -4,9 +4,9 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { mockDb } from '../services/firebase';
-import { Note, Report, Suggestion } from '../types';
+import { Note, Report, Suggestion, User, UserRole } from '../types';
 import Navbar from '../components/Navbar';
-import { Check, X, Trash2, ArrowUpRight, ArrowUpDown, FileText, Clock, CheckCircle2, ThumbsUp, AlertTriangle, Flag, EyeOff, Lightbulb } from 'lucide-react';
+import { Check, X, Trash2, ArrowUpRight, ArrowUpDown, FileText, Clock, CheckCircle2, ThumbsUp, AlertTriangle, Flag, EyeOff, Lightbulb, Users, Shield } from 'lucide-react';
 import PreviewModal from '../components/PreviewModal';
 
 const AdminPanel: React.FC = () => {
@@ -18,8 +18,10 @@ const AdminPanel: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'reported' | 'suggestions'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'reported' | 'suggestions' | 'users'>('all');
   const [sortBy, setSortBy] = useState<'date_newest' | 'date_oldest' | 'title' | 'uploader'>('date_newest');
   const [previewNote, setPreviewNote] = useState<Note | null>(null);
   
@@ -58,8 +60,14 @@ const AdminPanel: React.FC = () => {
       const suggestionsData = await mockDb.getSuggestions();
       setSuggestions(suggestionsData);
     } catch(e) {
-        // Suggestions are optional feature, fail silently in UI
         console.warn("Suggestions fetch failed (optional feature)");
+    }
+
+    try {
+      const usersData = await mockDb.getUsers();
+      setUsers(usersData);
+    } catch(e) {
+      console.warn("Users fetch failed");
     }
 
     setLoading(false);
@@ -114,6 +122,19 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleRoleChange = async (userId: string, newRole: UserRole) => {
+      try {
+          // Optimistic UI Update
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+          
+          await mockDb.updateUserRole(userId, newRole);
+          addToast(`User role updated to ${newRole}`, 'success');
+      } catch (e: any) {
+          addToast(e.message || "Failed to update role", 'error');
+          fetchData(); // Revert on failure
+      }
+  };
+
   const dismissReport = async (reportId: string) => {
       try {
           await mockDb.deleteReport(reportId);
@@ -152,6 +173,7 @@ const AdminPanel: React.FC = () => {
     approved: notes.filter(n => n.isApproved).length,
     reports: reports.length,
     suggestions: suggestions.length,
+    users: users.length,
     upvotes: notes.reduce((acc, curr) => acc + curr.upvotes, 0)
   };
 
@@ -165,7 +187,7 @@ const AdminPanel: React.FC = () => {
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-8">{t('admin_dashboard')}</h1>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-8">
             <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
                 <div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_total')}</p>
@@ -208,7 +230,7 @@ const AdminPanel: React.FC = () => {
             </div>
 
             {/* Suggestions Stat */}
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-purple-300 dark:hover:border-purple-700 transition-colors col-span-2 lg:col-span-1">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-purple-300 dark:hover:border-purple-700 transition-colors">
                 <div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_suggestions')}</p>
                     <p className="text-xl font-bold text-slate-900 dark:text-white">{stats.suggestions}</p>
@@ -217,13 +239,24 @@ const AdminPanel: React.FC = () => {
                     <Lightbulb className="w-5 h-5" />
                 </div>
             </div>
+
+             {/* Users Stat */}
+             <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors">
+                <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">Users</p>
+                    <p className="text-xl font-bold text-slate-900 dark:text-white">{stats.users}</p>
+                </div>
+                <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600 dark:text-indigo-400">
+                    <Users className="w-5 h-5" />
+                </div>
+            </div>
         </div>
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           
           <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-             {/* Sort Dropdown (Disabled in reports/suggestions view) */}
-            {statusFilter !== 'reported' && statusFilter !== 'suggestions' && (
+             {/* Sort Dropdown (Disabled in reports/suggestions/users view) */}
+            {statusFilter !== 'reported' && statusFilter !== 'suggestions' && statusFilter !== 'users' && (
                 <div className="relative">
                 <ArrowUpDown className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none ${dir === 'rtl' ? 'right-3' : 'left-3'}`} />
                 <select 
@@ -252,6 +285,9 @@ const AdminPanel: React.FC = () => {
                   {t('tab_suggestions')}
                   {stats.suggestions > 0 && <span className="bg-purple-500 text-white text-[10px] px-1.5 rounded-full">{stats.suggestions}</span>}
               </button>
+              <button onClick={() => setStatusFilter('users')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition whitespace-nowrap flex items-center gap-1.5 ${statusFilter === 'users' ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
+                  Users
+              </button>
             </div>
           </div>
         </div>
@@ -274,6 +310,13 @@ const AdminPanel: React.FC = () => {
                         <th className={`px-6 py-4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>{t('table_reporter')}</th>
                         <th className={`px-6 py-4 text-center`}>{t('table_actions')}</th>
                       </>
+                  ) : statusFilter === 'users' ? (
+                       <>
+                        <th className={`px-6 py-4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>User</th>
+                        <th className={`px-6 py-4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>Joined</th>
+                        <th className={`px-6 py-4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>Trust Score</th>
+                        <th className={`px-6 py-4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>Role</th>
+                      </>
                   ) : (
                       <>
                         <th className={`px-6 py-4 ${dir === 'rtl' ? 'text-right' : 'text-left'}`}>{t('form_title')}</th>
@@ -289,7 +332,7 @@ const AdminPanel: React.FC = () => {
                 {loading ? (
                    <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">{t('loading')}</td></tr>
                 ) : (
-                    // LOGIC SWITCH: Suggestions, Reports, or Notes
+                    // LOGIC SWITCH: Suggestions, Reports, Users or Notes
                     statusFilter === 'suggestions' ? (
                         suggestions.length === 0 ? (
                             <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">No suggestions yet.</td></tr>
@@ -317,6 +360,39 @@ const AdminPanel: React.FC = () => {
                                 </tr>
                             ))
                         )
+                    ) : statusFilter === 'users' ? (
+                        users.map(u => (
+                            <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition bg-white dark:bg-slate-900">
+                                <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-500 text-xs overflow-hidden">
+                                            {u.avatar ? <img src={u.avatar} className="w-full h-full object-cover" /> : u.name.charAt(0)}
+                                        </div>
+                                        <span>{u.name}</span>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-slate-600 dark:text-slate-300 text-sm">
+                                    {u.joinedAt ? new Date(u.joinedAt).toLocaleDateString() : '-'}
+                                </td>
+                                <td className="px-6 py-4">
+                                     <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${u.trustPoints >= 80 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
+                                         {u.trustPoints}
+                                     </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <select 
+                                        value={u.role}
+                                        onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
+                                        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm rounded-lg focus:ring-2 focus:ring-primary-500 block w-32 p-1.5"
+                                        disabled={u.role === 'owner' && user.role !== 'owner'} // Protect owner
+                                    >
+                                        <option value="student">Student</option>
+                                        <option value="admin">Admin</option>
+                                        {user.role === 'owner' && <option value="owner">Owner</option>}
+                                    </select>
+                                </td>
+                            </tr>
+                        ))
                     ) : statusFilter === 'reported' ? (
                         reports.length === 0 ? (
                             <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">No active reports.</td></tr>
