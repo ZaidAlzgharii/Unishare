@@ -1,17 +1,11 @@
 import { Note, Comment, User, Report, Suggestion } from '../types';
 import { GoogleGenAI } from "@google/genai";
-import { supabase } from './supabaseClient';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 import mammoth from 'mammoth';
 
-/* 
- * SQL SCHEMA REQUIREMENTS FOR THIS SERVICE:
- * 
- * 1. Add trust_points to profiles:
- *    ALTER TABLE profiles ADD COLUMN trust_points INTEGER DEFAULT 50 CHECK (trust_points >= 0 AND trust_points <= 100);
- * 
- * 2. Create RPC function 'update_user_trust':
- *    CREATE FUNCTION update_user_trust(target_user_id UUID, points_change INTEGER) RETURNS VOID ...
- */
+// MOCK DATA STORAGE HELPERS
+const getLocal = (key: string) => JSON.parse(localStorage.getItem(`mock_db_${key}`) || '[]');
+const setLocal = (key: string, data: any) => localStorage.setItem(`mock_db_${key}`, JSON.stringify(data));
 
 // Effectively this is now the 'apiService'.
 export const mockDb = {
@@ -24,6 +18,18 @@ export const mockDb = {
     updates: { name: string, oldPassword?: string, newPassword?: string, file?: File | null }
   ): Promise<void> => {
     
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        const currentUser = JSON.parse(localStorage.getItem('unishare_mock_user') || '{}');
+        const updatedUser = { ...currentUser, name: updates.name };
+        if (updates.file) {
+            // Mock file upload by creating a fake URL
+            updatedUser.avatar = URL.createObjectURL(updates.file);
+        }
+        localStorage.setItem('unishare_mock_user', JSON.stringify(updatedUser));
+        return;
+    }
+
     // 1. Password Update Logic
     if (updates.newPassword && updates.newPassword.trim() !== "") {
         if (!updates.oldPassword) {
@@ -94,6 +100,11 @@ export const mockDb = {
   // --- NOTES ---
 
   getNotes: async (): Promise<Note[]> => {
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        return getLocal('notes');
+    }
+
     try {
         const { data, error } = await supabase
           .from('notes')
@@ -131,6 +142,12 @@ export const mockDb = {
   },
 
   getMyNotes: async (userId: string): Promise<Note[]> => {
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        const notes = getLocal('notes');
+        return notes.filter((n: Note) => n.uploaderId === userId);
+    }
+
     const { data, error } = await supabase
       .from('notes')
       .select(`*, uploader:profiles!uploader_id (name)`)
@@ -159,7 +176,28 @@ export const mockDb = {
   addNote: async (note: Omit<Note, 'id' | 'date' | 'isApproved' | 'upvotes'> & { file?: File }): Promise<Note> => {
     if (!note.file) throw new Error("No file provided");
 
-    // 1. Fetch User Profile to check Trust Points (Optimistic Check)
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        const newNote: Note = {
+            id: Math.random().toString(36).substr(2, 9),
+            title: note.title,
+            description: note.description,
+            major: note.major,
+            category: note.category,
+            uploaderId: note.uploaderId,
+            uploaderName: note.uploaderName,
+            date: new Date().toISOString(),
+            fileUrl: URL.createObjectURL(note.file), // Blob URL for session
+            fileType: note.fileType,
+            isApproved: true, // Auto-approve in mock
+            upvotes: 0
+        };
+        const notes = getLocal('notes');
+        setLocal('notes', [newNote, ...notes]);
+        return newNote;
+    }
+
+    // 1. Fetch User Profile to check Trust Points
     let isAutoApproved = false;
     let trustPoints = 0;
 
@@ -172,7 +210,6 @@ export const mockDb = {
         
         if (userProfile) {
             trustPoints = userProfile.trust_points || 0;
-            // UPDATE: Check against new threshold 80%
             isAutoApproved = 
                 userProfile.role === 'admin' || 
                 userProfile.role === 'owner' || 
@@ -202,7 +239,6 @@ export const mockDb = {
         .getPublicUrl(filePath);
 
     // 4. Insert into Database
-    // Note: The database TRIGGER will have the final say on is_approved
     const { data, error } = await supabase
         .from('notes')
         .insert([{
@@ -226,12 +262,20 @@ export const mockDb = {
         upvotes: 0,
         date: data.date,
         id: data.id,
-        isApproved: data.is_approved, // Use actual DB status
+        isApproved: data.is_approved,
         fileUrl: publicUrl
     } as Note;
   },
 
   approveNote: async (id: string): Promise<void> => {
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        const notes = getLocal('notes');
+        const updated = notes.map((n: Note) => n.id === id ? { ...n, isApproved: true } : n);
+        setLocal('notes', updated);
+        return;
+    }
+
     // 1. Fetch note to get uploader
     const { data: note, error: noteError } = await supabase
         .from('notes')
@@ -250,7 +294,7 @@ export const mockDb = {
     
     if (updateError) throw updateError;
 
-    // 3. Reward Trust Points via RPC (+5 points)
+    // 3. Reward Trust Points
     try {
         await supabase.rpc('update_user_trust', {
             target_user_id: note.uploader_id,
@@ -262,14 +306,19 @@ export const mockDb = {
   },
 
   rejectNote: async (id: string): Promise<void> => {
-    // 1. Fetch to get uploader ID before deleting
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        const notes = getLocal('notes');
+        const updated = notes.filter((n: Note) => n.id !== id);
+        setLocal('notes', updated);
+        return;
+    }
+
     const { data: note } = await supabase.from('notes').select('uploader_id').eq('id', id).single();
     
-    // 2. Delete
     const { error } = await supabase.from('notes').delete().eq('id', id);
     if (error) throw error;
 
-    // 3. Penalize Trust Points via RPC (-5 points)
     if (note?.uploader_id) {
         try {
             await supabase.rpc('update_user_trust', {
@@ -281,10 +330,31 @@ export const mockDb = {
   },
 
   deleteNote: async (id: string): Promise<void> => {
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        const notes = getLocal('notes');
+        const updated = notes.filter((n: Note) => n.id !== id);
+        setLocal('notes', updated);
+        return;
+    }
+
     await supabase.from('notes').delete().eq('id', id);
   },
 
   toggleUpvote: async (id: string): Promise<number> => {
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        const notes = getLocal('notes');
+        const note = notes.find((n: Note) => n.id === id);
+        if (note) {
+            // Simple toggle simulation
+            note.upvotes = (note.upvotes || 0) + 1;
+            setLocal('notes', notes);
+            return note.upvotes;
+        }
+        return 0;
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return 0;
 
@@ -312,6 +382,20 @@ export const mockDb = {
   // --- REPORTING ---
 
   reportNote: async (noteId: string, userId: string, reason: string): Promise<void> => {
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        const reports = getLocal('reports');
+        reports.push({
+            id: Math.random().toString(),
+            noteId,
+            reporterId: userId,
+            reason,
+            created_at: new Date().toISOString()
+        });
+        setLocal('reports', reports);
+        return;
+    }
+
     const { error } = await supabase.from('reports').insert({
       note_id: noteId,
       reporter_id: userId,
@@ -324,6 +408,21 @@ export const mockDb = {
   },
 
   getReports: async (): Promise<Report[]> => {
+      // MOCK FALLBACK
+      if (!isSupabaseConfigured) {
+          const rawReports = getLocal('reports');
+          // Need to hydrate note/reporter details in mock, simplified here:
+          return rawReports.map((r: any) => ({
+              id: r.id,
+              noteId: r.noteId,
+              noteTitle: 'Mock Note',
+              reporterId: r.reporterId,
+              reporterName: 'Mock User',
+              reason: r.reason,
+              date: r.created_at || new Date().toISOString()
+          }));
+      }
+
       const { data: reports, error } = await supabase
         .from('reports')
         .select('*')
@@ -384,12 +483,32 @@ export const mockDb = {
   },
 
   deleteReport: async (id: string): Promise<void> => {
+      // MOCK FALLBACK
+      if (!isSupabaseConfigured) {
+          const reports = getLocal('reports');
+          setLocal('reports', reports.filter((r: any) => r.id !== id));
+          return;
+      }
       await supabase.from('reports').delete().eq('id', id);
   },
 
   // --- SUGGESTIONS ---
 
   addSuggestion: async (content: string, user?: User | null): Promise<void> => {
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        const suggestions = getLocal('suggestions');
+        suggestions.push({
+            id: Math.random().toString(),
+            content,
+            user_id: user?.id,
+            user_name: user?.name,
+            created_at: new Date().toISOString()
+        });
+        setLocal('suggestions', suggestions);
+        return;
+    }
+
     try {
         const payload: any = { content };
         if (user) payload.user_id = user.id;
@@ -400,6 +519,18 @@ export const mockDb = {
   },
 
   getSuggestions: async (): Promise<Suggestion[]> => {
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        const suggestions = getLocal('suggestions');
+        return suggestions.map((s: any) => ({
+            id: s.id,
+            content: s.content,
+            date: s.created_at,
+            userId: s.user_id,
+            userName: s.user_name || 'Anonymous'
+        }));
+    }
+
     try {
         const { data, error } = await supabase
             .from('suggestions')
@@ -427,12 +558,23 @@ export const mockDb = {
   },
 
   deleteSuggestion: async (id: string): Promise<void> => {
+      // MOCK FALLBACK
+      if (!isSupabaseConfigured) {
+          const suggestions = getLocal('suggestions');
+          setLocal('suggestions', suggestions.filter((s: any) => s.id !== id));
+          return;
+      }
       await supabase.from('suggestions').delete().eq('id', id);
   },
 
   // --- STATS ---
   
   getUserCount: async (): Promise<number> => {
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        return 1542; // Fake stat
+    }
+
     try {
         const { count, error } = await supabase
             .from('profiles')
@@ -451,17 +593,30 @@ export const mockDb = {
     userQuery?: string,
     language: 'ar' | 'en' = 'ar'
   ): Promise<string> => {
-    const { data: note } = await supabase.from('notes').select('file_url, file_type').eq('id', noteId).single();
-    if (!note) return "Error: Note not found.";
+    // In Mock Mode, we can't fetch file URLs from DB, so we look in local storage
+    let fileUrl = '';
+    let fileType = '';
+
+    if (!isSupabaseConfigured) {
+        const notes = getLocal('notes');
+        const n = notes.find((x: Note) => x.id === noteId);
+        if (!n) return "Note not found locally.";
+        fileUrl = n.fileUrl;
+        fileType = n.fileType;
+    } else {
+        const { data: note } = await supabase.from('notes').select('file_url, file_type').eq('id', noteId).single();
+        if (!note) return "Error: Note not found.";
+        fileUrl = note.file_url;
+        fileType = note.file_type;
+    }
 
     if (!process.env.API_KEY) {
-      console.error("Gemini API Error: API_KEY missing.");
-      return "AI Service is unavailable.";
+      return "AI Service Unavailable (Missing API_KEY). Please add it to your environment variables.";
     }
 
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const fileResponse = await fetch(note.file_url);
+      const fileResponse = await fetch(fileUrl);
       if (!fileResponse.ok) throw new Error("Failed to fetch file.");
       
       const blob = await fileResponse.blob();
@@ -487,13 +642,13 @@ export const mockDb = {
 
       const systemPrompt = `You are UniShare AI. Output in ${language === 'ar' ? 'Arabic' : 'English'}. Use Markdown.`;
       
-      const mimeType = blob.type || (note.file_type === 'pdf' ? 'application/pdf' : 
-                                     note.file_type === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 
+      const mimeType = blob.type || (fileType === 'pdf' ? 'application/pdf' : 
+                                     fileType === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 
                                      'image/jpeg');
 
       let parts: any[] = [{ text: taskInstructions }];
 
-      if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || note.file_type === 'docx') {
+      if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || fileType === 'docx') {
           try {
               const arrayBuffer = await blob.arrayBuffer();
               const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
@@ -532,6 +687,12 @@ export const mockDb = {
   // --- COMMENTS ---
 
   getComments: async (noteId: string): Promise<Comment[]> => {
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        const comments = getLocal('comments');
+        return comments.filter((c: Comment) => c.noteId === noteId);
+    }
+
     const { data, error } = await supabase
         .from('comments')
         .select(`*, commenter:profiles!user_id (name, avatar_url)`)
@@ -552,6 +713,22 @@ export const mockDb = {
   },
 
   addComment: async (noteId: string, text: string, user: User): Promise<Comment> => {
+    // MOCK FALLBACK
+    if (!isSupabaseConfigured) {
+        const newComment: Comment = {
+            id: Math.random().toString(),
+            noteId,
+            userId: user.id,
+            userName: user.name,
+            userAvatar: user.avatar,
+            text,
+            date: new Date().toISOString()
+        };
+        const comments = getLocal('comments');
+        setLocal('comments', [newComment, ...comments]);
+        return newComment;
+    }
+
     const { data, error } = await supabase
         .from('comments')
         .insert([{ note_id: noteId, user_id: user.id, text: text }])

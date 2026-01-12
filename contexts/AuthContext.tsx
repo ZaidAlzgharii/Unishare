@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '../types';
-import { supabase } from '../services/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 
 interface RegisterResult {
   success: boolean;
@@ -26,6 +26,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Helper to fetch user profile details after auth state changes
   const fetchProfile = async (userId: string, email: string, createdAt?: string) => {
+    if (!isSupabaseConfigured) return; // Skip if mocking
+
     try {
       let joinedAt = createdAt;
       
@@ -50,14 +52,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           id: userId,
           name: data.name || email.split('@')[0],
           role: (data.role as UserRole) || 'student',
-          // Ensure we always have an avatar, falling back to generated one if DB is null/empty
           avatar: data.avatar_url || defaultAvatar,
           joinedAt: joinedAt || new Date().toISOString(),
-          // New Simple Trust Points Logic
           trustPoints: data.trust_points || 0
         });
       } else {
-        // Fallback: If profile row is missing (trigger delay), check Auth Metadata
         const { data: { user: authUser } } = await supabase.auth.getUser();
         const metaName = authUser?.user_metadata?.name || email.split('@')[0];
         const metaRole = authUser?.user_metadata?.role || 'student';
@@ -73,7 +72,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (e) {
       console.error("Error fetching profile", e);
-      // Fallback to minimal user state on error to prevent infinite loading
       setUser({
           id: userId,
           name: email.split('@')[0],
@@ -86,7 +84,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   useEffect(() => {
-    // Check active session
+    // MOCK AUTH CHECK
+    if (!isSupabaseConfigured) {
+        const savedUser = localStorage.getItem('unishare_mock_user');
+        if (savedUser) {
+            setUser(JSON.parse(savedUser));
+        }
+        setLoading(false);
+        return;
+    }
+
+    // REAL SUPABASE AUTH CHECK
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         fetchProfile(session.user.id, session.user.email!, session.user.created_at);
@@ -97,7 +105,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        // Only fetch if we don't have a user or if the ID changed
         if (!user || user.id !== session.user.id) {
             fetchProfile(session.user.id, session.user.email!, session.user.created_at);
         }
@@ -111,6 +118,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const login = async (email: string, pass: string): Promise<{ success: boolean; message?: string }> => {
+    // MOCK LOGIN
+    if (!isSupabaseConfigured) {
+        // Simulate network delay
+        await new Promise(r => setTimeout(r, 800));
+        
+        // Simple mock validation (accept any non-empty input for demo)
+        const mockUser: User = {
+            id: 'mock-user-123',
+            name: email.split('@')[0],
+            role: email.includes('admin') ? 'admin' : 'student',
+            avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${email}`,
+            joinedAt: new Date().toISOString(),
+            trustPoints: 50
+        };
+        
+        localStorage.setItem('unishare_mock_user', JSON.stringify(mockUser));
+        setUser(mockUser);
+        return { success: true };
+    }
+
+    // REAL LOGIN
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password: pass.trim(),
@@ -118,7 +146,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     if (error) {
         console.error("Login failed:", error.message);
-        // Supabase returns "Email not confirmed" if verification is pending
         return { success: false, message: error.message };
     }
     
@@ -126,11 +153,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const register = async (name: string, email: string, pass: string, role: UserRole): Promise<RegisterResult> => {
+    // MOCK REGISTER
+    if (!isSupabaseConfigured) {
+        await new Promise(r => setTimeout(r, 800));
+        const mockUser: User = {
+            id: `mock-${Date.now()}`,
+            name: name,
+            role: role,
+            avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${name}`,
+            joinedAt: new Date().toISOString(),
+            trustPoints: 0
+        };
+        localStorage.setItem('unishare_mock_user', JSON.stringify(mockUser));
+        setUser(mockUser);
+        return { success: true, emailConfirmationRequired: false };
+    }
+
+    // REAL REGISTER
     try {
         const cleanName = name.trim();
         const defaultAvatar = `https://api.dicebear.com/9.x/avataaars/svg?seed=${cleanName.replace(/[^a-zA-Z0-9]/g, '')}`;
 
-        // 1. Sign up auth user with metadata
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password: pass.trim(),
@@ -148,7 +191,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: false, message: error.message };
         }
         
-        // If user object exists but session is null, it means Email Confirmation is ON
         if (data.user && !data.session) {
             return { 
                 success: true,
@@ -157,7 +199,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             };
         }
 
-        // If auto-confirmed (Email confirmation disabled in Supabase)
         if (data.user && data.session) {
             setUser({
                 id: data.user.id,
@@ -177,6 +218,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const verifyEmail = async (email: string, token: string): Promise<{ success: boolean; message?: string }> => {
+    if (!isSupabaseConfigured) return { success: true };
+
     try {
       const { data, error } = await supabase.auth.verifyOtp({
         email: email.trim(),
@@ -201,6 +244,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const resendOtp = async (email: string): Promise<{ success: boolean; message?: string }> => {
+    if (!isSupabaseConfigured) return { success: true };
+
     try {
       const { error } = await supabase.auth.resend({
         type: 'signup',
@@ -217,7 +262,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    if (isSupabaseConfigured) {
+        await supabase.auth.signOut();
+    } else {
+        localStorage.removeItem('unishare_mock_user');
+    }
     setUser(null);
   };
 
