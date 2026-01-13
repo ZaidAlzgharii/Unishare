@@ -139,12 +139,11 @@ const Profile: React.FC = () => {
                           <Calendar className="w-4 h-4" />
                           {t('profile_member_since')} {user.joinedAt ? new Date(user.joinedAt).getFullYear() : new Date().getFullYear()}
                       </span>
-                      {user.role === 'student' && (
-                         <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold border ${user.trustPoints >= 5 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
-                            <ShieldCheck className="w-4 h-4" />
-                            Trust Points: {user.trustPoints}
-                         </span>
-                      )}
+                      {/* Show Trust Points for Everyone */}
+                      <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold border ${user.trustPoints >= 5 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
+                        <ShieldCheck className="w-4 h-4" />
+                        Trust Points: {user.trustPoints}
+                      </span>
                   </div>
 
                   {/* Stats Cards */}

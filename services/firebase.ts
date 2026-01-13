@@ -1,10 +1,15 @@
+
 import { Note, Comment, User, Report, Suggestion, UserRole } from '../types';
 import { GoogleGenAI } from "@google/genai";
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import mammoth from 'mammoth';
 
 // MOCK DATA STORAGE HELPERS
-const getLocal = (key: string) => JSON.parse(localStorage.getItem(`mock_db_${key}`) || '[]');
+const getLocal = (key: string) => {
+    try {
+        return JSON.parse(localStorage.getItem(`mock_db_${key}`) || '[]');
+    } catch { return []; }
+};
 const setLocal = (key: string, data: any) => localStorage.setItem(`mock_db_${key}`, JSON.stringify(data));
 
 // Effectively this is now the 'apiService'.
@@ -27,6 +32,14 @@ export const mockDb = {
             updatedUser.avatar = URL.createObjectURL(updates.file);
         }
         localStorage.setItem('unishare_mock_user', JSON.stringify(updatedUser));
+        
+        // Also update in users list if it exists
+        const users = getLocal('users');
+        const userIndex = users.findIndex((u: User) => u.id === userId);
+        if (userIndex >= 0) {
+            users[userIndex] = { ...users[userIndex], name: updates.name, avatar: updatedUser.avatar };
+            setLocal('users', users);
+        }
         return;
     }
 
@@ -102,12 +115,16 @@ export const mockDb = {
   getUsers: async (): Promise<User[]> => {
     // MOCK FALLBACK
     if (!isSupabaseConfigured) {
-        // Return dummy list for demo
-        return [
-            { id: '1', name: 'Admin User', role: 'admin', avatar: '', joinedAt: new Date().toISOString(), trustPoints: 100 },
-            { id: '2', name: 'Student One', role: 'student', avatar: '', joinedAt: new Date().toISOString(), trustPoints: 20 },
-            { id: '3', name: 'Student Two', role: 'student', avatar: '', joinedAt: new Date().toISOString(), trustPoints: 55 }
-        ];
+        let users = getLocal('users');
+        if (!users || users.length === 0) {
+            users = [
+                { id: '1', name: 'Admin User', role: 'admin', avatar: '', joinedAt: new Date().toISOString(), trustPoints: 100 },
+                { id: '2', name: 'Student One', role: 'student', avatar: '', joinedAt: new Date().toISOString(), trustPoints: 20 },
+                { id: '3', name: 'Student Two', role: 'student', avatar: '', joinedAt: new Date().toISOString(), trustPoints: 55 }
+            ];
+            setLocal('users', users);
+        }
+        return users;
     }
 
     const { data, error } = await supabase
@@ -123,14 +140,23 @@ export const mockDb = {
         role: p.role,
         avatar: p.avatar_url,
         joinedAt: p.created_at,
-        trustPoints: p.trust_points
+        trustPoints: p.trust_points || 0
     }));
   },
 
   updateUserRole: async (targetUserId: string, newRole: UserRole): Promise<void> => {
     // MOCK FALLBACK
     if (!isSupabaseConfigured) {
-        console.log(`Mock: User ${targetUserId} role updated to ${newRole}`);
+        const users = getLocal('users');
+        const updated = users.map((u: User) => u.id === targetUserId ? { ...u, role: newRole } : u);
+        setLocal('users', updated);
+        
+        // If updating self in mock mode, update session user
+        const currentUser = JSON.parse(localStorage.getItem('unishare_mock_user') || '{}');
+        if (currentUser.id === targetUserId) {
+            currentUser.role = newRole;
+            localStorage.setItem('unishare_mock_user', JSON.stringify(currentUser));
+        }
         return;
     }
 
