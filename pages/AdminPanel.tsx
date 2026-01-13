@@ -6,7 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 import { mockDb } from '../services/firebase';
 import { Note, Report, Suggestion, User, UserRole } from '../types';
 import Navbar from '../components/Navbar';
-import { Check, X, Trash2, ArrowUpRight, ArrowUpDown, FileText, Clock, CheckCircle2, ThumbsUp, AlertTriangle, Flag, EyeOff, Lightbulb, Users, Shield } from 'lucide-react';
+import { Check, X, Trash2, ArrowUpRight, ArrowUpDown, FileText, Clock, CheckCircle2, ThumbsUp, AlertTriangle, Flag, EyeOff, Lightbulb, Users, Shield, User as UserIcon, Filter } from 'lucide-react';
 import PreviewModal from '../components/PreviewModal';
 
 const AdminPanel: React.FC = () => {
@@ -23,6 +23,7 @@ const AdminPanel: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'reported' | 'suggestions' | 'users'>('all');
   const [sortBy, setSortBy] = useState<'date_newest' | 'date_oldest' | 'title' | 'uploader'>('date_newest');
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'student' | 'admin' | 'owner'>('all');
   const [previewNote, setPreviewNote] = useState<Note | null>(null);
   
   // Modal State
@@ -188,7 +189,10 @@ const AdminPanel: React.FC = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-8">
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
+            <div 
+                onClick={() => setStatusFilter('all')}
+                className={`bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-sm flex items-center justify-between group cursor-pointer transition-all hover:-translate-y-1 ${statusFilter === 'all' ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/10' : 'border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700'}`}
+            >
                 <div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_total')}</p>
                     <p className="text-xl font-bold text-slate-900 dark:text-white">{stats.total}</p>
@@ -198,7 +202,10 @@ const AdminPanel: React.FC = () => {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-amber-300 dark:hover:border-amber-700 transition-colors">
+            <div 
+                onClick={() => setStatusFilter('pending')}
+                className={`bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-sm flex items-center justify-between group cursor-pointer transition-all hover:-translate-y-1 ${statusFilter === 'pending' ? 'border-amber-500 ring-1 ring-amber-500 bg-amber-50/10' : 'border-slate-200 dark:border-slate-800 hover:border-amber-300 dark:hover:border-amber-700'}`}
+            >
                 <div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_pending')}</p>
                     <p className="text-xl font-bold text-slate-900 dark:text-white">{stats.pending}</p>
@@ -209,7 +216,10 @@ const AdminPanel: React.FC = () => {
             </div>
 
              {/* Reports Stat */}
-             <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-red-300 dark:hover:border-red-700 transition-colors">
+             <div 
+                onClick={() => setStatusFilter('reported')}
+                className={`bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-sm flex items-center justify-between group cursor-pointer transition-all hover:-translate-y-1 ${statusFilter === 'reported' ? 'border-red-500 ring-1 ring-red-500 bg-red-50/10' : 'border-slate-200 dark:border-slate-800 hover:border-red-300 dark:hover:border-red-700'}`}
+            >
                 <div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_reports')}</p>
                     <p className="text-xl font-bold text-slate-900 dark:text-white">{stats.reports}</p>
@@ -219,7 +229,10 @@ const AdminPanel: React.FC = () => {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-green-300 dark:hover:border-green-700 transition-colors">
+            <div 
+                onClick={() => setStatusFilter('approved')}
+                className={`bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-sm flex items-center justify-between group cursor-pointer transition-all hover:-translate-y-1 ${statusFilter === 'approved' ? 'border-green-500 ring-1 ring-green-500 bg-green-50/10' : 'border-slate-200 dark:border-slate-800 hover:border-green-300 dark:hover:border-green-700'}`}
+            >
                 <div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_approved')}</p>
                     <p className="text-xl font-bold text-slate-900 dark:text-white">{stats.approved}</p>
@@ -230,7 +243,10 @@ const AdminPanel: React.FC = () => {
             </div>
 
             {/* Suggestions Stat */}
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-purple-300 dark:hover:border-purple-700 transition-colors">
+            <div 
+                onClick={() => setStatusFilter('suggestions')}
+                className={`bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-sm flex items-center justify-between group cursor-pointer transition-all hover:-translate-y-1 ${statusFilter === 'suggestions' ? 'border-purple-500 ring-1 ring-purple-500 bg-purple-50/10' : 'border-slate-200 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700'}`}
+            >
                 <div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">{t('admin_stats_suggestions')}</p>
                     <p className="text-xl font-bold text-slate-900 dark:text-white">{stats.suggestions}</p>
@@ -241,7 +257,10 @@ const AdminPanel: React.FC = () => {
             </div>
 
              {/* Users Stat */}
-             <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between group hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors">
+             <div 
+                onClick={() => setStatusFilter('users')}
+                className={`bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-sm flex items-center justify-between group cursor-pointer transition-all hover:-translate-y-1 ${statusFilter === 'users' ? 'border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50/10' : 'border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700'}`}
+            >
                 <div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">Users</p>
                     <p className="text-xl font-bold text-slate-900 dark:text-white">{stats.users}</p>
@@ -272,7 +291,24 @@ const AdminPanel: React.FC = () => {
                 </div>
             )}
 
-            {/* Status Filter */}
+            {/* User Role Filter (Only for Users view) */}
+            {statusFilter === 'users' && (
+                <div className="relative">
+                <Filter className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none ${dir === 'rtl' ? 'right-3' : 'left-3'}`} />
+                <select 
+                    value={userRoleFilter}
+                    onChange={(e) => setUserRoleFilter(e.target.value as any)}
+                    className={`w-full sm:w-auto appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 text-sm rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent block py-2 ${dir === 'rtl' ? 'pr-9 pl-8' : 'pl-9 pr-8'} shadow-sm cursor-pointer`}
+                >
+                    <option value="all">All Roles</option>
+                    <option value="student">Student</option>
+                    <option value="admin">Admin</option>
+                    <option value="owner">Owner</option>
+                </select>
+                </div>
+            )}
+
+            {/* Status Filter Tabs */}
             <div className="flex bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-1 shadow-sm w-fit overflow-x-auto">
               <button onClick={() => setStatusFilter('all')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition whitespace-nowrap ${statusFilter === 'all' ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>{t('tab_all')}</button>
               <button onClick={() => setStatusFilter('pending')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition whitespace-nowrap ${statusFilter === 'pending' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>{t('status_pending')}</button>
@@ -361,12 +397,14 @@ const AdminPanel: React.FC = () => {
                             ))
                         )
                     ) : statusFilter === 'users' ? (
-                        users.map(u => (
+                        users
+                            .filter(u => userRoleFilter === 'all' || u.role === userRoleFilter)
+                            .map(u => (
                             <tr key={u.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition bg-white dark:bg-slate-900">
                                 <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-500 text-xs overflow-hidden">
-                                            {u.avatar ? <img src={u.avatar} className="w-full h-full object-cover" /> : u.name.charAt(0)}
+                                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                                             <UserIcon className="w-4 h-4 text-slate-400" />
                                         </div>
                                         <span>{u.name}</span>
                                     </div>

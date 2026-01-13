@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { mockDb } from '../services/firebase';
 import { Comment } from '../types';
-import { Send, MessageSquare } from 'lucide-react';
+import { Send, MessageSquare, User as UserIcon } from 'lucide-react';
 
 interface CommentSectionProps {
   noteId: string;
@@ -64,13 +64,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ noteId, className = '' 
           comments.map((comment) => (
             <div key={comment.id} className="flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="flex-shrink-0">
-                 {comment.userAvatar ? (
-                    <img src={comment.userAvatar} alt={comment.userName} className="w-8 h-8 rounded-full bg-slate-200 object-cover" />
-                 ) : (
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-700 dark:text-indigo-300 text-xs font-bold">
-                        {comment.userName.charAt(0)}
-                    </div>
-                 )}
+                 <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                    <UserIcon className="w-4 h-4 text-slate-400" />
+                 </div>
               </div>
               <div className="flex-1">
                  <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 dark:border-slate-700">

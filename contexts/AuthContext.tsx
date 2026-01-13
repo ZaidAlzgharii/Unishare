@@ -37,10 +37,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           joinedAt = user?.created_at;
       }
 
-      // Generate a consistent default avatar based on email/name seed
-      const seed = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
-      const defaultAvatar = `https://api.dicebear.com/9.x/avataaars/svg?seed=${seed}`;
-
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -52,7 +48,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           id: userId,
           name: data.name || email.split('@')[0],
           role: (data.role as UserRole) || 'student',
-          avatar: data.avatar_url || defaultAvatar,
+          avatar: '', // Generic icon used in UI
           joinedAt: joinedAt || new Date().toISOString(),
           trustPoints: data.trust_points || 0
         });
@@ -65,7 +61,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             id: userId,
             name: metaName,
             role: metaRole,
-            avatar: defaultAvatar,
+            avatar: '', // Generic icon used in UI
             joinedAt: joinedAt || new Date().toISOString(),
             trustPoints: 0
         });
@@ -76,7 +72,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           id: userId,
           name: email.split('@')[0],
           role: 'student',
-          avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${email.split('@')[0]}`,
+          avatar: '',
           joinedAt: createdAt || new Date().toISOString(),
           trustPoints: 0
       });
@@ -128,7 +124,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             id: 'mock-user-123',
             name: email.split('@')[0],
             role: email.includes('admin') ? 'admin' : 'student',
-            avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${email}`,
+            avatar: '',
             joinedAt: new Date().toISOString(),
             trustPoints: 50
         };
@@ -160,7 +156,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             id: `mock-${Date.now()}`,
             name: name,
             role: role,
-            avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${name}`,
+            avatar: '',
             joinedAt: new Date().toISOString(),
             trustPoints: 0
         };
@@ -172,7 +168,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // REAL REGISTER
     try {
         const cleanName = name.trim();
-        const defaultAvatar = `https://api.dicebear.com/9.x/avataaars/svg?seed=${cleanName.replace(/[^a-zA-Z0-9]/g, '')}`;
 
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
@@ -181,7 +176,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             data: {
               name: cleanName,
               role: role,
-              avatar_url: defaultAvatar
+              avatar_url: ''
             }
           }
         });
@@ -204,7 +199,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 id: data.user.id,
                 name: cleanName,
                 role,
-                avatar: defaultAvatar,
+                avatar: '',
                 joinedAt: data.user.created_at || new Date().toISOString(),
                 trustPoints: 0
             });

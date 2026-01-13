@@ -5,7 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import { mockDb } from '../services/firebase';
-import { Mail, Lock, User, ArrowRight, Loader2, Moon, Sun, Globe, CheckCircle2, KeyRound, RefreshCw, Users, MailWarning } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Loader2, Moon, Sun, Globe, CheckCircle2, KeyRound, RefreshCw, Users, MailWarning, Eye, EyeOff, Check } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { t, dir, language, setLanguage } = useLanguage();
@@ -21,8 +21,8 @@ const Login: React.FC = () => {
   // Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
-  const [otp, setOtp] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
 
   // Resend Timer State
@@ -53,13 +53,13 @@ const Login: React.FC = () => {
     try {
         const result = await resendOtp(pendingEmail);
         if (result.success) {
-            addToast('Confirmation link/code resent! Check your inbox.', 'success');
+            addToast('Confirmation link resent! Check your inbox.', 'success');
             setResendTimer(60); // 60 second cooldown
         } else {
-            addToast(result.message || 'Failed to resend code', 'error');
+            addToast(result.message || 'Failed to resend link', 'error');
         }
     } catch (e) {
-        addToast('Error resending code', 'error');
+        addToast('Error resending link', 'error');
     } finally {
         setLoading(false);
     }
@@ -75,7 +75,6 @@ const Login: React.FC = () => {
         if (result.success) {
             if (result.emailConfirmationRequired) {
                 // If email verification is required, switch to verify view
-                addToast(t('register_verification_sent'), 'success');
                 setPendingEmail(email.trim());
                 setView('verify');
                 setResendTimer(60); // Start timer immediately on success
@@ -88,14 +87,8 @@ const Login: React.FC = () => {
         }
       } 
       else if (view === 'verify') {
-        // Verify OTP (Only if user has a code. Link clicks handled by AuthContext auto-detect)
-        const result = await verifyEmail(pendingEmail.trim(), otp.trim());
-        if (result.success) {
-            addToast(t('toast_welcome'), 'success');
-            navigate('/');
-        } else {
-            addToast(result.message || 'Verification failed', 'error');
-        }
+        // Just return to login screen as verification happens via email link
+        setView('login');
       }
       else {
         // Standard Login
@@ -198,10 +191,10 @@ const Login: React.FC = () => {
 
             <div className="text-center mb-10 lg:text-left">
                 <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-3">
-                    {view === 'register' ? t('btn_register') : view === 'verify' ? 'Confirm Email' : t('login_title')}
+                    {view === 'register' ? t('btn_register') : view === 'verify' ? 'Check your inbox' : t('login_title')}
                 </h2>
                 <p className="text-slate-500 dark:text-slate-400">
-                    {view === 'register' ? t('register_subtitle') : view === 'verify' ? `Verify account for ${pendingEmail}` : t('login_subtitle')}
+                    {view === 'register' ? t('register_subtitle') : view === 'verify' ? `We sent a link to ${pendingEmail}` : t('login_subtitle')}
                 </p>
             </div>
 
@@ -209,43 +202,31 @@ const Login: React.FC = () => {
                 
                 {/* VERIFICATION VIEW */}
                 {view === 'verify' && (
-                    <div className="animate-in slide-in-from-right-4 fade-in duration-300 space-y-5">
+                    <div className="animate-in slide-in-from-right-4 fade-in duration-300 space-y-6 text-center">
                          
-                         {/* Info Box */}
-                         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 rounded-xl p-4 flex items-start gap-3">
-                            <MailWarning className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                            <div className="text-sm text-amber-800 dark:text-amber-200">
-                                <p className="font-semibold mb-1">Check your email</p>
-                                <p className="opacity-90 mb-2">We sent a confirmation link to <strong>{pendingEmail}</strong>. Please click the link to activate your account.</p>
-                                <p className="opacity-75 text-xs">If you received a 6-digit code instead, enter it below.</p>
-                            </div>
+                         <div className="w-20 h-20 bg-primary-50 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto text-primary-600 dark:text-primary-400 mb-2 relative">
+                            <div className="absolute inset-0 rounded-full animate-ping bg-primary-100 dark:bg-primary-900/20 opacity-75 duration-1000"></div>
+                            <Mail className="w-8 h-8 relative z-10" />
                          </div>
 
-                         <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2 ml-1">Verification Code (Optional)</label>
-                            <div className="relative group">
-                                <KeyRound className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary-500 transition-colors ${dir === 'rtl' ? 'right-4' : 'left-4'}`} />
-                                <input
-                                    type="text"
-                                    value={otp}
-                                    onChange={(e) => setOtp(e.target.value)}
-                                    className={`w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-3.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition font-medium tracking-widest text-lg ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'}`}
-                                    placeholder="123456"
-                                    maxLength={6}
-                                />
-                            </div>
+                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 border border-slate-100 dark:border-slate-800">
+                             <p className="text-slate-700 dark:text-slate-300 font-medium mb-3">
+                                 We've sent a secure verification link to your email address.
+                             </p>
+                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-0">
+                                 Please click the link in that email to activate your account and sign in.
+                             </p>
                          </div>
 
-                        <div className="flex items-center justify-between text-xs">
-                             <p className="text-slate-400 ml-1">Check spam folder if needed.</p>
+                        <div className="flex items-center justify-center gap-2 text-sm pt-2">
+                             <span className="text-slate-500">Didn't receive the email?</span>
                              <button
                                 type="button"
                                 onClick={handleResend}
                                 disabled={resendTimer > 0 || loading}
-                                className={`font-bold flex items-center gap-1.5 transition ${resendTimer > 0 ? 'text-slate-400 cursor-not-allowed' : 'text-primary-600 hover:text-primary-700'}`}
+                                className={`font-bold transition ${resendTimer > 0 ? 'text-slate-400 cursor-not-allowed' : 'text-primary-600 hover:text-primary-700'}`}
                              >
-                                <RefreshCw className={`w-3 h-3 ${loading && resendTimer === 0 ? 'animate-spin' : ''}`} />
-                                {resendTimer > 0 ? `Resend link in ${resendTimer}s` : 'Resend Link'}
+                                {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend Link'}
                              </button>
                         </div>
                     </div>
@@ -292,13 +273,20 @@ const Login: React.FC = () => {
                             <div className="relative group">
                                 <Lock className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary-500 transition-colors ${dir === 'rtl' ? 'right-4' : 'left-4'}`} />
                                 <input
-                                type="password"
+                                type={showPassword ? "text" : "password"}
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className={`w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-3.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition font-medium ${dir === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'}`}
+                                className={`w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-3.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition font-medium ${dir === 'rtl' ? 'pr-12 pl-12' : 'pl-12 pr-12'}`}
                                 placeholder="••••••••"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className={`absolute top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors ${dir === 'rtl' ? 'left-4' : 'right-4'}`}
+                                >
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
                             </div>
                         </div>
                     </>
@@ -314,20 +302,18 @@ const Login: React.FC = () => {
                             <Loader2 className="w-6 h-6 animate-spin" />
                         ) : (
                         <>
-                            {view === 'register' ? t('btn_register') : view === 'verify' ? 'Confirm Code' : t('btn_login')}
-                            <ArrowRight className="w-5 h-5" />
+                            {view === 'register' ? t('btn_register') : view === 'verify' ? 'Back to Login' : t('btn_login')}
+                            {view !== 'verify' && <ArrowRight className="w-5 h-5" />}
                         </>
                         )}
                     </button>
                     
                     {view === 'verify' && (
-                        <button
-                            type="button"
-                            onClick={() => setView('login')}
-                            className="w-full py-2 text-slate-500 dark:text-slate-400 text-sm hover:text-slate-700 dark:hover:text-slate-200"
-                        >
-                            Back to Login
-                        </button>
+                        <div className="text-center">
+                            <p className="text-xs text-slate-400 mt-4">
+                                Once verified, you can log in with your email and password.
+                            </p>
+                        </div>
                     )}
                 </div>
             </form>

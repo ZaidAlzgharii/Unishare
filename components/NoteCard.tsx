@@ -33,6 +33,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
   // Report State
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState('Spam or Misleading');
+  const [customReportReason, setCustomReportReason] = useState('');
   const [reporting, setReporting] = useState(false);
 
   const getIcon = () => {
@@ -125,21 +126,33 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
     if (!user) return;
     setReporting(true);
     
-    // Map full text to simple codes for database consistency
-    const reasonCode = {
-        'Spam or Misleading': 'spam',
-        'Inappropriate Content': 'inappropriate',
-        'Wrong Category/Major': 'wrong_category',
-        'Other': 'other'
-    }[reportReason] || 'other';
+    let finalReasonCode = '';
+
+    if (reportReason === 'Other') {
+        if (!customReportReason.trim()) {
+            addToast("Please provide details for the report", 'error');
+            setReporting(false);
+            return;
+        }
+        finalReasonCode = `Other: ${customReportReason.trim()}`;
+    } else {
+        const keyMap: {[key: string]: string} = {
+            'Spam or Misleading': 'spam',
+            'Inappropriate Content': 'inappropriate',
+            'Wrong Category/Major': 'wrong_category',
+            'Other': 'other'
+        };
+        finalReasonCode = keyMap[reportReason] || 'other';
+    }
 
     try {
-        await mockDb.reportNote(note.id, user.id, reasonCode);
+        await mockDb.reportNote(note.id, user.id, finalReasonCode);
         addToast(t('toast_report_success'), 'success');
         setIsReportOpen(false);
+        setCustomReportReason('');
+        setReportReason('Spam or Misleading');
     } catch (error: any) {
         console.error("Report submission failed:", error);
-        // Ensure we pass a string to addToast, preventing [object Object] errors
         const msg = error?.message || (typeof error === 'string' ? error : 'Failed to submit report');
         addToast(msg, 'error');
     } finally {
@@ -316,17 +329,33 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
                                  'Other': 'report_reason_other'
                              };
                              return (
-                                <label key={reason} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition">
-                                    <input 
-                                        type="radio" 
-                                        name="reportReason" 
-                                        value={reason} 
-                                        checked={reportReason === reason}
-                                        onChange={(e) => setReportReason(e.target.value)}
-                                        className="w-4 h-4 text-primary-600 focus:ring-primary-500"
-                                    />
-                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t(keyMap[reason])}</span>
-                                </label>
+                                <div key={reason} className="transition-all">
+                                    <label className={`flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition ${reportReason === reason ? 'bg-slate-50 dark:bg-slate-800 ring-1 ring-primary-500 border-primary-500' : ''}`}>
+                                        <input 
+                                            type="radio" 
+                                            name="reportReason" 
+                                            value={reason} 
+                                            checked={reportReason === reason}
+                                            onChange={(e) => setReportReason(e.target.value)}
+                                            className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t(keyMap[reason])}</span>
+                                    </label>
+                                    
+                                    {/* Custom Input Field for "Other" */}
+                                    {reason === 'Other' && reportReason === 'Other' && (
+                                        <div className="mt-2 ml-1 animate-in slide-in-from-top-2 fade-in">
+                                            <textarea
+                                                required
+                                                value={customReportReason}
+                                                onChange={(e) => setCustomReportReason(e.target.value)}
+                                                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 transition-all resize-none"
+                                                placeholder="Please provide details about the issue..."
+                                                rows={3}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
                              );
                         })}
                     </div>
@@ -341,8 +370,8 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onUpdate, isSaved, onToggleSa
                         </button>
                         <button 
                             type="submit" 
-                            disabled={reporting}
-                            className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-500/20 transition disabled:opacity-70"
+                            disabled={reporting || (reportReason === 'Other' && !customReportReason.trim())}
+                            className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-500/20 transition disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                             {reporting ? '...' : t('btn_submit_report')}
                         </button>

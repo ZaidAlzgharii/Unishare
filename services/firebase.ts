@@ -12,6 +12,29 @@ const getLocal = (key: string) => {
 };
 const setLocal = (key: string, data: any) => localStorage.setItem(`mock_db_${key}`, JSON.stringify(data));
 
+// Helper for updating trust points in mock mode
+const updateMockTrust = (userId: string, points: number) => {
+    // Update 'users' list
+    const users = getLocal('users');
+    const userIndex = users.findIndex((u: User) => u.id === userId);
+    
+    // If user exists in the public users list
+    if (userIndex >= 0) {
+        users[userIndex].trustPoints = (users[userIndex].trustPoints || 0) + points;
+        setLocal('users', users);
+    }
+    
+    // Update the session user if it matches the target
+    const currentUserStr = localStorage.getItem('unishare_mock_user');
+    if (currentUserStr) {
+        const currentUser = JSON.parse(currentUserStr);
+        if (currentUser.id === userId) {
+            currentUser.trustPoints = (currentUser.trustPoints || 0) + points;
+            localStorage.setItem('unishare_mock_user', JSON.stringify(currentUser));
+        }
+    }
+};
+
 // Effectively this is now the 'apiService'.
 export const mockDb = {
   
@@ -265,6 +288,10 @@ export const mockDb = {
         };
         const notes = getLocal('notes');
         setLocal('notes', [newNote, ...notes]);
+        
+        // Award points for sharing (Mock mode is auto-approved)
+        updateMockTrust(newNote.uploaderId, 5);
+
         return newNote;
     }
 
@@ -327,6 +354,18 @@ export const mockDb = {
 
     if (error) throw new Error(error.message);
 
+    // 5. Award points if auto-approved
+    if (isAutoApproved) {
+         try {
+            await supabase.rpc('update_user_trust', {
+                target_user_id: note.uploaderId,
+                points_change: 5
+            });
+         } catch (e) {
+             console.warn("Failed to auto-award trust points:", e);
+         }
+    }
+
     return {
         ...data,
         uploaderName: note.uploaderName,
@@ -344,6 +383,10 @@ export const mockDb = {
         const notes = getLocal('notes');
         const updated = notes.map((n: Note) => n.id === id ? { ...n, isApproved: true } : n);
         setLocal('notes', updated);
+        
+        // Award points in mock
+        const n = notes.find((x: Note) => x.id === id);
+        if (n) updateMockTrust(n.uploaderId, 5);
         return;
     }
 
@@ -380,6 +423,11 @@ export const mockDb = {
     // MOCK FALLBACK
     if (!isSupabaseConfigured) {
         const notes = getLocal('notes');
+        const n = notes.find((x: Note) => x.id === id);
+        
+        // Deduct points in mock
+        if (n) updateMockTrust(n.uploaderId, -5);
+
         const updated = notes.filter((n: Note) => n.id !== id);
         setLocal('notes', updated);
         return;

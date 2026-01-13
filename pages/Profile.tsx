@@ -6,7 +6,7 @@ import { mockDb } from '../services/firebase';
 import { Note } from '../types';
 import NoteCard from '../components/NoteCard';
 import NoteCardSkeleton from '../components/NoteCardSkeleton';
-import { User, Calendar, Award, BookOpen, Trash2, Search, ShieldCheck, Edit, X, Upload, Loader2, Save } from 'lucide-react';
+import { User, Calendar, Award, BookOpen, Trash2, Search, ShieldCheck, Edit, X, Loader2, Save } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { supabase } from '../services/supabaseClient';
 
@@ -25,8 +25,7 @@ const Profile: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     oldPassword: '',
-    newPassword: '',
-    file: null as File | null
+    newPassword: ''
   });
 
   const fetchMyNotes = async () => {
@@ -69,8 +68,7 @@ const Profile: React.FC = () => {
           await mockDb.updateUserProfile(user.id, authUser.email, {
               name: formData.name,
               oldPassword: formData.oldPassword,
-              newPassword: formData.newPassword,
-              file: formData.file
+              newPassword: formData.newPassword
           });
           
           addToast(t('toast_profile_updated'), 'success');
@@ -109,13 +107,9 @@ const Profile: React.FC = () => {
 
          <div className="container mx-auto px-4 max-w-5xl relative z-10">
             <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
-               {/* Avatar */}
-               <div className="w-32 h-32 rounded-full ring-4 ring-white dark:ring-slate-800 shadow-xl overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center relative group">
-                  {user.avatar ? (
-                      <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                  ) : (
-                      <span className="text-4xl font-bold text-slate-500 dark:text-slate-400">{user.name.charAt(0)}</span>
-                  )}
+               {/* Avatar - Empty Generic Icon */}
+               <div className="w-32 h-32 rounded-full ring-4 ring-white dark:ring-slate-800 shadow-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center relative group">
+                  <User className="w-16 h-16 text-slate-300 dark:text-slate-600" />
                </div>
                
                {/* User Info */}
@@ -139,7 +133,6 @@ const Profile: React.FC = () => {
                           <Calendar className="w-4 h-4" />
                           {t('profile_member_since')} {user.joinedAt ? new Date(user.joinedAt).getFullYear() : new Date().getFullYear()}
                       </span>
-                      {/* Show Trust Points for Everyone */}
                       <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold border ${user.trustPoints >= 5 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
                         <ShieldCheck className="w-4 h-4" />
                         Trust Points: {user.trustPoints}
@@ -195,7 +188,6 @@ const Profile: React.FC = () => {
                  filteredNotes.map(note => (
                      <div key={note.id} className="relative group">
                          <NoteCard note={note} onToggleSave={() => {}} />
-                         {/* Only Admins/Owners can delete. Shared accounts (students) cannot delete each other's notes. */}
                          {(user.role === 'admin' || user.role === 'owner') && (
                             <button 
                                 onClick={(e) => { e.stopPropagation(); handleDelete(note.id); }}
@@ -239,23 +231,6 @@ const Profile: React.FC = () => {
                                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-slate-900 dark:text-white"
                             />
-                        </div>
-
-                        {/* Avatar Upload */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('label_avatar')}</label>
-                            <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-primary-400 transition cursor-pointer relative">
-                                <input 
-                                    type="file" 
-                                    accept="image/*"
-                                    onChange={(e) => setFormData({...formData, file: e.target.files ? e.target.files[0] : null})}
-                                    className="absolute inset-0 opacity-0 cursor-pointer"
-                                />
-                                <Upload className="w-6 h-6 text-slate-400 mb-2" />
-                                <span className="text-xs font-medium text-center truncate w-full px-2">
-                                    {formData.file ? formData.file.name : t('form_file')}
-                                </span>
-                            </div>
                         </div>
 
                         <div className="w-full h-px bg-slate-100 dark:bg-slate-800 my-2"></div>

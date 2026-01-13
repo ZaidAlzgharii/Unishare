@@ -117,14 +117,8 @@ const Navbar: React.FC<NavbarProps> = ({ onSaveSession }) => {
                     <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">{user.role}</span>
                  </Link>
                  <div className="relative group">
-                    <Link to="/profile" className="w-9 h-9 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 cursor-pointer flex items-center justify-center">
-                      {user.avatar ? (
-                        <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-bold text-sm">
-                          {user.name.charAt(0)}
-                        </div>
-                      )}
+                    <Link to="/profile" className="w-9 h-9 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 cursor-pointer flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                        <UserIcon className="w-5 h-5" />
                     </Link>
                     {/* Logout Tooltip/Button */}
                     <div className="absolute top-full right-0 mt-2 w-40 py-1 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right z-50 flex flex-col">

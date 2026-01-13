@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
@@ -9,13 +9,14 @@ import Navbar from '../components/Navbar';
 import NoteCard from '../components/NoteCard';
 import NoteCardSkeleton from '../components/NoteCardSkeleton';
 import UploadModal from '../components/UploadModal';
-import { Search, Plus, Filter, ArrowUpDown, SearchX, Sparkles } from 'lucide-react';
+import { Search, Plus, Filter, ArrowUpDown, SearchX, Sparkles, Mail, Heart, Shield, HelpCircle, FileText, AlertCircle } from 'lucide-react';
 
 const Home: React.FC = () => {
   const { t, dir } = useLanguage();
   const { addToast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   // Initialize state from local storage if available
   const [search, setSearch] = useState(() => {
@@ -102,6 +103,15 @@ const Home: React.FC = () => {
     setActiveTab('all');
   };
 
+  const handleScrollTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBrowseNotes = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => searchInputRef.current?.focus(), 500);
+  };
+
   // Base filtering for global controls (Search)
   const baseNotes = notes.filter(note => {
     if (!note.isApproved) return false;
@@ -140,7 +150,7 @@ const Home: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-300">
       <Navbar onSaveSession={handleSaveSession} />
       
       {/* Modern Hero Section */}
@@ -161,7 +171,7 @@ const Home: React.FC = () => {
           <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 dark:text-white mb-6 tracking-tight leading-tight">
             {t('hero_title')}
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-blue-500 dark:from-primary-400 dark:to-blue-400">
-              Faster than ever.
+              {t('hero_highlight')}
             </span>
           </h1>
           
@@ -173,6 +183,7 @@ const Home: React.FC = () => {
             <div className="relative flex-1 group">
               <Search className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary-500 transition-colors ${dir === 'rtl' ? 'right-4' : 'left-4'}`} />
               <input 
+                ref={searchInputRef}
                 type="text"
                 placeholder={t('search_placeholder')}
                 value={search}
@@ -192,7 +203,7 @@ const Home: React.FC = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 max-w-6xl mt-8">
+      <div className="container mx-auto px-4 max-w-6xl mt-8 flex-1">
         {/* Controls */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           
@@ -276,6 +287,107 @@ const Home: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Improved Footer Contact Section */}
+      <footer className="relative bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-20 overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-px bg-gradient-to-r from-transparent via-primary-500/50 to-transparent opacity-50"></div>
+        <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-primary-500/5 rounded-full blur-3xl"></div>
+        <div className="absolute -top-40 -left-40 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl"></div>
+
+        <div className="container mx-auto px-6 py-16 relative z-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
+                
+                {/* Brand Column */}
+                <div className="flex flex-col gap-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary-50 dark:bg-primary-900/20 rounded-xl flex items-center justify-center">
+                           <img src="https://cdn-icons-png.flaticon.com/512/3413/3413535.png" alt="UniShare" className="w-6 h-6 object-contain" />
+                        </div>
+                        <span className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">UniShare</span>
+                    </div>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed max-w-xs">
+                        Empowering students worldwide to share knowledge, access study materials, and succeed together in their academic journey.
+                    </p>
+                    <div className="flex items-center gap-3 mt-auto">
+                        {/* Twitter / X */}
+                        <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 transition-all hover:-translate-y-1" aria-label="Twitter">
+                            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg>
+                        </a>
+                        {/* Discord */}
+                        <a href="https://discord.com" target="_blank" rel="noopener noreferrer" className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-[#5865F2] hover:text-white transition-all hover:-translate-y-1" aria-label="Discord">
+                           <svg className="w-5 h-5 fill-current" viewBox="0 0 127.14 96.36"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.11,77.11,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22c.63-15.79-4.16-34.69-18.9-72.15ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+                        </a>
+                    </div>
+                </div>
+                
+                {/* Platform Links */}
+                <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white mb-6 text-sm uppercase tracking-wider">Platform</h4>
+                    <ul className="space-y-4 text-sm text-slate-500 dark:text-slate-400 font-medium">
+                        <li><button onClick={handleScrollTop} className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-2"><Sparkles className="w-3.5 h-3.5" /> Features</button></li>
+                        <li><button onClick={handleBrowseNotes} className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-2"><Search className="w-3.5 h-3.5" /> Browse Notes</button></li>
+                        <li><button onClick={handleUploadClick} className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-2"><Plus className="w-3.5 h-3.5" /> Upload</button></li>
+                    </ul>
+                </div>
+
+                {/* Support Links */}
+                <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white mb-6 text-sm uppercase tracking-wider">Resources</h4>
+                    <ul className="space-y-4 text-sm text-slate-500 dark:text-slate-400 font-medium">
+                        <li><button onClick={() => addToast('Help Center coming soon!', 'info')} className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-2"><HelpCircle className="w-3.5 h-3.5" /> Help Center</button></li>
+                        <li><button onClick={() => addToast('Community Guidelines: Be respectful and helpful.', 'info')} className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-2"><Shield className="w-3.5 h-3.5" /> Guidelines</button></li>
+                        <li><button onClick={() => addToast('Blog coming soon!', 'info')} className="hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-2"><FileText className="w-3.5 h-3.5" /> Blog</button></li>
+                    </ul>
+                </div>
+
+                {/* Contact Column */}
+                <div>
+                     <h4 className="font-bold text-slate-900 dark:text-white mb-6 text-sm uppercase tracking-wider">Contact Us</h4>
+                     <div className="space-y-4">
+                        {/* Notice Card */}
+                        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-900/30 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <Mail className="w-12 h-12 text-amber-900 dark:text-amber-100" />
+                            </div>
+                            
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-2 mb-2 text-amber-600 dark:text-amber-400">
+                                    <AlertCircle className="w-4 h-4" />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Notice</span>
+                                </div>
+                                
+                                <p className="text-sm text-slate-700 dark:text-slate-300 mb-4 leading-relaxed font-medium">
+                                    Email support isn't working right now. Please contact us via Twitter! :)
+                                </p>
+                                
+                                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 p-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl hover:scale-[1.02] active:scale-95 transition-all shadow-md">
+                                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg>
+                                    <span className="text-sm font-bold">Message on X</span>
+                                </a>
+                            </div>
+                        </div>
+                     </div>
+                </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 mt-16 pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
+                <p className="text-xs text-slate-400 font-medium">
+                    &copy; {new Date().getFullYear()} UniShare Inc. All rights reserved.
+                </p>
+                <div className="flex items-center gap-6 text-xs font-bold text-slate-500 dark:text-slate-400">
+                    <button onClick={() => addToast('Privacy Policy: We value your data.', 'info')} className="hover:text-slate-900 dark:hover:text-white transition-colors">Privacy Policy</button>
+                    <button onClick={() => addToast('Terms: Be nice.', 'info')} className="hover:text-slate-900 dark:hover:text-white transition-colors">Terms of Service</button>
+                    <button onClick={() => addToast('Cookies helps us improve.', 'info')} className="hover:text-slate-900 dark:hover:text-white transition-colors">Cookie Settings</button>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-700">
+                    <span>Made with</span>
+                    <Heart className="w-3 h-3 text-red-500 fill-current animate-pulse" />
+                    <span>for students</span>
+                </div>
+            </div>
+        </div>
+      </footer>
 
       {isUploadOpen && (
         <UploadModal 

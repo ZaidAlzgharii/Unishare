@@ -15,6 +15,7 @@ export const TRANSLATIONS: TranslationDictionary = {
   nav_logout: { en: 'Logout', ar: 'خروج' },
   hero_title: { en: 'Find & Share University Notes', ar: 'اعثر على وشارك الملاحظات الجامعية' },
   hero_subtitle: { en: 'Access thousands of verified study materials from top students. Level up your grades today.', ar: 'الوصول إلى الآلاف من المواد الدراسية المعتمدة من أفضل الطلاب. ارفع درجاتك اليوم.' },
+  hero_highlight: { en: 'Faster than ever.', ar: 'أسرع من أي وقت مضى.' },
   search_placeholder: { en: 'Search for courses, majors, or topics...', ar: 'ابحث عن الدورات، التخصصات، أو المواضيع...' },
   filter_program: { en: 'Filter by Major', ar: 'تصفية حسب التخصص' },
   sort_date_newest: { en: 'Date (Newest)', ar: 'التاريخ (الأحدث)' },
